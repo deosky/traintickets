@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"traintickets/base/contract"
+	"traintickets/base/piaohttputil"
 )
 
 //Client12306 ...
@@ -16,7 +17,7 @@ type client12306 struct {
 //New12306Client ...
 func New12306Client(url string, login contract.ILogin, vcode contract.IVCode) (contract.IClient12306, error) {
 
-	resp, err := http.Get(url)
+	resp, err := piaohttputil.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +29,7 @@ func New12306Client(url string, login contract.ILogin, vcode contract.IVCode) (c
 	fmt.Println("1:", resp.Cookies())
 	fmt.Println("2:", client.cookies)
 	fmt.Println("3:", resp.Header)
-	client.CaptureVCode(resp.Body)
+	//client.CaptureVCode(resp.Body)
 	//
 	return &client, nil
 }
