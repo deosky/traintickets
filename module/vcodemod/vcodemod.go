@@ -10,10 +10,11 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
-	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
 )
 
@@ -39,9 +40,7 @@ type checkRandCodeAnsynData struct {
 }
 
 //CaptureVCode ...touclick-randCode
-func (vcode *VCodeModule) CaptureVCode(resp contract.RespBody) (string, error) {
-	//0.5872982159059681
-	//https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand&0.12693779092491142
+func (vcode *VCodeModule) CaptureVCode() (string, error) {
 	randNum := randGen.Float64()
 	vcodeURL := fmt.Sprintf("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand&%s", strconv.FormatFloat(randNum, 'f', 17, 64))
 	fmt.Println("randnum:=", randNum)
@@ -72,25 +71,38 @@ func (vcode *VCodeModule) CaptureVCode(resp contract.RespBody) (string, error) {
 	}
 	defer file.Close()
 	file.Write(buf.Bytes())
-	fmt.Println("data string:=", buf.String())
-	fmt.Println("data base64 str:=", base64.StdEncoding.EncodeToString(buf.Bytes()))
+	base64Str := base64.StdEncoding.EncodeToString(buf.Bytes())
+	fmt.Println("data base64 str:=", base64Str)
+
 	md5n := md5.New()
 	md5n.Write(buf.Bytes())
 	cipherStr := md5n.Sum(nil)
 	fmt.Println("md5 bytes:=", cipherStr, "string:=", string(cipherStr), "hex string:=", hex.EncodeToString(cipherStr))
 
-	return "", nil
+	return base64Str, nil
 }
 
 //CheckVCode ...
 func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
+	//randCode:110,49,183,45,239,50
+	//rand:sjrand
+	fmt.Println("正在校验验证码")
+	data := make(url.Values, 2)
+	data.Add("randCode", code)
+	data.Add("rand", "sjrand")
 
-	resp, err := piaohttputil.Get("https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn")
+	resp, err := piaohttputil.Post("https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("校验完成")
 	buf, err := readRespBody(resp.Body)
 	if err != nil {
 		return false, err
 	}
+
 	var result checkRandCodeAnsynResult
+	fmt.Println("返回结果:", buf.String())
 	err = json.Unmarshal(buf.Bytes(), &result)
 	if err != nil {
 		return false, err
@@ -102,20 +114,27 @@ func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
 	return false, errors.New("请点击正确的验证码")
 }
 
+//ResolveVCodeImg ...
+func (vcode *VCodeModule) ResolveVCodeImg(base64Img string) (string, error) {
+
+	return "", nil
+}
+
 //readRespBody ...
 func readRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 	data := make([]byte, 1024)
 	for {
 		n, err := resp.Read(data)
+		buf.Write(data[:n])
 		if err != nil {
 			if err == io.EOF {
+				buf.Write(data[:n])
 				break
 			} else {
 				return buf, err
 			}
 		}
-		buf.Write(data[:n])
 	}
 	return buf, nil
 }
