@@ -109,6 +109,8 @@ func ticketLog(query contract.TicketQuery) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer resp.Body.Close()
+
 	buf, err := piaohttputil.ReadRespBody(resp.Body)
 	if err != nil {
 		return false, err
@@ -129,10 +131,15 @@ func queryTicket(query contract.TicketQuery) (*ticketResult, error) {
 	url := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
 
 	resp, err := piaohttputil.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 	buf, err := piaohttputil.ReadRespBody(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	fmt.Println("data:", buf.String())
 	result := &ticketResult{}
 	err = json.Unmarshal(buf.Bytes(), result)
