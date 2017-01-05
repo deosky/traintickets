@@ -40,15 +40,15 @@ type checkRandCodeAnsynData struct {
 }
 
 //CaptureVCode ...touclick-randCode
-func (vcode *VCodeModule) CaptureVCode() (string, error) {
+func (vcode *VCodeModule) CaptureVCode(module, rand string) (*string, error) {
 	randNum := randGen.Float64()
-	vcodeURL := fmt.Sprintf("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand&%s", strconv.FormatFloat(randNum, 'f', 17, 64))
+	vcodeURL := fmt.Sprintf("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=%s&rand=%s&%s", module, rand, strconv.FormatFloat(randNum, 'f', 17, 64))
 	fmt.Println("randnum:=", randNum)
 	fmt.Println("vcodeUrl:=", vcodeURL)
 	rep, err := piaohttputil.Get(vcodeURL)
 	if err != nil {
 		fmt.Println("CaptureVCode:=", err)
-		return "", err
+		return nil, err
 	}
 	defer rep.Body.Close()
 
@@ -60,14 +60,14 @@ func (vcode *VCodeModule) CaptureVCode() (string, error) {
 			if err == io.EOF {
 				break
 			} else {
-				return "", err
+				return nil, err
 			}
 		}
 		buf.Write(data[:n])
 	}
 	file, err := os.Create(strconv.FormatFloat(randNum, 'f', 17, 64) + "vcode.png")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer file.Close()
 	file.Write(buf.Bytes())
@@ -79,7 +79,7 @@ func (vcode *VCodeModule) CaptureVCode() (string, error) {
 	cipherStr := md5n.Sum(nil)
 	fmt.Println("md5 bytes:=", cipherStr, "string:=", string(cipherStr), "hex string:=", hex.EncodeToString(cipherStr))
 
-	return base64Str, nil
+	return &base64Str, nil
 }
 
 //CheckVCode ...
@@ -96,7 +96,7 @@ func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
 		return false, err
 	}
 	fmt.Println("校验完成")
-	buf, err := readRespBody(resp.Body)
+	buf, err := piaohttputil.ReadRespBody(resp.Body)
 	if err != nil {
 		return false, err
 	}
@@ -115,26 +115,7 @@ func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
 }
 
 //ResolveVCodeImg ...
-func (vcode *VCodeModule) ResolveVCodeImg(base64Img string) (string, error) {
+func (vcode *VCodeModule) ResolveVCodeImg(base64Img *string) (string, error) {
 
 	return "", nil
-}
-
-//readRespBody ...
-func readRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
-	buf := &bytes.Buffer{}
-	data := make([]byte, 1024)
-	for {
-		n, err := resp.Read(data)
-		buf.Write(data[:n])
-		if err != nil {
-			if err == io.EOF {
-				buf.Write(data[:n])
-				break
-			} else {
-				return buf, err
-			}
-		}
-	}
-	return buf, nil
 }

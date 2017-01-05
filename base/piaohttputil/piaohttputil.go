@@ -1,6 +1,7 @@
 package piaohttputil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ var (
 
 //Get ...
 func Get(url string) (*http.Response, error) {
+	fmt.Println("req get:", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -42,4 +44,22 @@ func Post(url string, bodyType string, body io.Reader) (*http.Response, error) {
 	}
 	fmt.Println("print cookies end")
 	return resp, err
+}
+
+//ReadRespBody ...
+func ReadRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
+	buf := &bytes.Buffer{}
+	data := make([]byte, 1024)
+	for {
+		n, err := resp.Read(data)
+		buf.Write(data[:n])
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return buf, err
+			}
+		}
+	}
+	return buf, nil
 }

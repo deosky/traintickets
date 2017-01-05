@@ -1,13 +1,9 @@
 package contract
 
-import "io"
-
-//RespBody ...
-type RespBody io.ReadCloser
-
 //IClient12306 ...
 type IClient12306 interface {
 	ILogin
+	ITicket
 }
 
 //ILogin ...
@@ -17,7 +13,12 @@ type ILogin interface {
 
 //IVCode ...
 type IVCode interface {
-	CaptureVCode() (string, error)
-	ResolveVCodeImg(base64Img string) (string, error)
+	CaptureVCode(module, rand string) (*string, error)
+	ResolveVCodeImg(base64Img *string) (string, error)
 	CheckVCode(code string) (bool, error)
+}
+
+//ITicket ...
+type ITicket interface {
+	QueryATicket(query TicketQuery) (*string, error)
 }
