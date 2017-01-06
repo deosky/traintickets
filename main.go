@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/x509"
 	"fmt"
 	"time"
 	"traintickets/base"
@@ -27,7 +26,4 @@ func main() {
 	_, err = client.QueryATicket(query)
 	fmt.Println("error:", err)
 
-	pool := x509.NewCertPool()
-	x509.ea
-	pool.AddCert()
 }
