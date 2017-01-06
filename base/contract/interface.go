@@ -2,23 +2,32 @@ package contract
 
 //IClient12306 ...
 type IClient12306 interface {
-	ILogin
-	ITicket
+	Context() IClientContext
+	QueryTicket(query TicketQuery) error
+	TicketSResult() <-chan (*TicketResult)
+}
+
+//IClientContext ...
+type IClientContext interface {
+	LoginModule() ILogin
+	VCodeModule() IVCode
+	TicketModule() ITicket
 }
 
 //ILogin ...
 type ILogin interface {
-	Login(username, pwd string, vcp IVCode) (bool, error)
+	Login(clientID int, username, pwd string, vcp IVCode) (bool, error)
 }
 
 //IVCode ...
 type IVCode interface {
-	CaptureVCode(module, rand string) (*string, error)
-	ResolveVCodeImg(base64Img *string) (string, error)
-	CheckVCode(code string) (bool, error)
+	CaptureVCode(clientID int, module, rand string) (*string, error)
+	ResolveVCodeImg(clientID int, base64Img *string) (string, error)
+	CheckVCode(clientID int, code string) (bool, error)
 }
 
 //ITicket ...
 type ITicket interface {
-	QueryATicket(query TicketQuery) (*string, error)
+	QueryATicket(clientID int, query *TicketQuery) error
+	TicketSResult() <-chan (*TicketResult)
 }

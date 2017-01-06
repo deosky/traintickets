@@ -40,12 +40,12 @@ type checkRandCodeAnsynData struct {
 }
 
 //CaptureVCode ...touclick-randCode
-func (vcode *VCodeModule) CaptureVCode(module, rand string) (*string, error) {
+func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*string, error) {
 	randNum := randGen.Float64()
 	vcodeURL := fmt.Sprintf("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=%s&rand=%s&%s", module, rand, strconv.FormatFloat(randNum, 'f', 17, 64))
 	fmt.Println("randnum:=", randNum)
 	fmt.Println("vcodeUrl:=", vcodeURL)
-	rep, err := piaohttputil.Get(vcodeURL)
+	rep, err := piaohttputil.Get(clientID, vcodeURL)
 	if err != nil {
 		fmt.Println("CaptureVCode:=", err)
 		return nil, err
@@ -83,7 +83,7 @@ func (vcode *VCodeModule) CaptureVCode(module, rand string) (*string, error) {
 }
 
 //CheckVCode ...
-func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
+func (vcode *VCodeModule) CheckVCode(clientID int, code string) (bool, error) {
 	//randCode:110,49,183,45,239,50
 	//rand:sjrand
 	fmt.Println("正在校验验证码")
@@ -91,7 +91,7 @@ func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
 	data.Add("randCode", code)
 	data.Add("rand", "sjrand")
 
-	resp, err := piaohttputil.Post("https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
+	resp, err := piaohttputil.Post(clientID, "https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +115,7 @@ func (vcode *VCodeModule) CheckVCode(code string) (bool, error) {
 }
 
 //ResolveVCodeImg ...
-func (vcode *VCodeModule) ResolveVCodeImg(base64Img *string) (string, error) {
+func (vcode *VCodeModule) ResolveVCodeImg(clientID int, base64Img *string) (string, error) {
 
 	return "", nil
 }

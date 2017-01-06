@@ -1,10 +1,20 @@
 package piaomod
 
-import "traintickets/base/contract"
-import "fmt"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"traintickets/base/contract"
+)
+
 import "traintickets/base/piaohttputil"
-import "encoding/json"
+
 import "errors"
+
+var (
+	chanTRes = make(chan (*contract.TicketResult), 1024)
+)
 
 //PIAO ...
 type PIAO struct {
@@ -65,47 +75,78 @@ type queryLeftNewDTO struct {
 	StartCityCode          string `json:"start_city_code"`
 	EndProvinceCode        string `json:"end_province_code"`
 	EndCityCode            string `json:"end_city_code"`
+	YzNum                  string `json:"yz_num"` //硬座
+	RzNum                  string `json:"rz_num"`
+	YwNum                  string `json:"yw_num"` //硬卧
 	RwNum                  string `json:"rw_num"`
 	GrNum                  string `json:"gr_num"`
-	ZyNum                  string `json:"zy_num"`
-	ZeNum                  string `json:"ze_num"`
-	TzNum                  string `json:"tz_num"`
+	ZyNum                  string `json:"zy_num"` //一等座
+	ZeNum                  string `json:"ze_num"` //二等座
+	TzNum                  string `json:"tz_num"` //特等座位
 	GgNum                  string `json:"gg_num"`
 	YbNum                  string `json:"yb_num"`
-	WzNum                  string `json:"wz_num"`
+	WzNum                  string `json:"wz_num"` //无座
 	QtNum                  string `json:"qt_num"`
+	SwzNum                 string `json:"swz_num"`
 }
 
 //QueryATicket ...
-func (piao *PIAO) QueryATicket(query contract.TicketQuery) (*string, error) {
-	r, err := ticketLog(query)
+func (piao *PIAO) QueryATicket(clientID int, query *contract.TicketQuery) error {
+
+	r, err := ticketLog(clientID, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if !r {
-		return nil, errors.New("ticketLog false")
+		return errors.New("ticketLog false")
 	}
-	_, err = queryTicket(query)
+	res, err := queryTicket(clientID, query)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return nil, nil
+
+	result, err := resolveQueryAResult(res)
+	if err != nil {
+		return err
+	}
+
+	//判断是否存在指定的票
+	for _, p := range result.Data {
+		ywNum, _ := strconv.Atoi(p.Dto.YwNum)
+		if ywNum > 0 {
+			tRes := &contract.TicketResult{SecretStr: p.SecretStr, StationTrainCode: p.Dto.StationTrainCode}
+			chanTRes <- tRes
+		}
+	}
+	return nil
+}
+
+//TicketSResult ...
+func (piao *PIAO) TicketSResult() <-chan (*contract.TicketResult) {
+	return chanTRes
 }
 
 //ResolveQueryAResult ...
-func resolveQueryAResult(data *string) (*ticketResult, error) {
+func resolveQueryAResult(data *bytes.Buffer) (*ticketResult, error) {
 
-	return nil, nil
+	//fmt.Println("data:", buf.String())
+	result := &ticketResult{}
+	err := json.Unmarshal(data.Bytes(), result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
-func ticketLog(query contract.TicketQuery) (bool, error) {
+func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 
 	//https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=2017-01-26&leftTicketDTO.from_station=SHH&leftTicketDTO.to_station=BJP&purpose_codes=ADULT
 
 	formatStr := "https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
 	url := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
-	resp, err := piaohttputil.Get(url)
+	resp, err := piaohttputil.Get(clientID, url)
 	if err != nil {
 		return false, err
 	}
@@ -125,12 +166,12 @@ func ticketLog(query contract.TicketQuery) (bool, error) {
 	return result.Status, nil
 }
 
-func queryTicket(query contract.TicketQuery) (*ticketResult, error) {
+func queryTicket(clientID int, query *contract.TicketQuery) (*bytes.Buffer, error) {
 	formatStr := "https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
 	url := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
 
-	resp, err := piaohttputil.Get(url)
+	resp, err := piaohttputil.Get(clientID, url)
 	if err != nil {
 		return nil, err
 	}
@@ -139,13 +180,6 @@ func queryTicket(query contract.TicketQuery) (*ticketResult, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println("data:", buf.String())
-	result := &ticketResult{}
-	err = json.Unmarshal(buf.Bytes(), result)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("reslut:=", result)
-	return result, nil
+	//fmt.Println("reslut:=", result)
+	return buf, nil
 }

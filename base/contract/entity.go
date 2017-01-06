@@ -13,3 +13,9 @@ type TicketQuery struct {
 	ToStation    string
 	PurposeCodes string
 }
+
+//TicketResult ...
+type TicketResult struct {
+	SecretStr        string
+	StationTrainCode string
+}

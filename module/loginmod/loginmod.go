@@ -9,9 +9,9 @@ import (
 type LoginModule struct{}
 
 //Login ...
-func (lm *LoginModule) Login(username, pwd string, vcp contract.IVCode) (bool, error) {
+func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IVCode) (bool, error) {
 	//捕获验证码
-	_, err := vcp.CaptureVCode("login", "sjrand")
+	_, err := vcp.CaptureVCode(clientID, "login", "sjrand")
 	if err != nil {
 		return false, err
 	}
@@ -19,7 +19,7 @@ func (lm *LoginModule) Login(username, pwd string, vcp contract.IVCode) (bool, e
 	var vcode string
 	fmt.Scanf("%s", &vcode)
 	fmt.Printf("输入的验证码为%s\n", vcode)
-	vcp.CheckVCode(vcode)
+	vcp.CheckVCode(clientID, vcode)
 	//fmt.Scanln(vcode)
 	return true, nil
 }
