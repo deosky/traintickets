@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
 )
@@ -33,18 +34,20 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	urlStr := "https://kyfw.12306.cn/otn/login/loginAysnSuggest"
 
 	//捕获验证码
-	// _, err := vcp.CaptureVCode(clientID, "login", "sjrand")
-	// if err != nil {
-	// 	return false, err
-	// }
-	// fmt.Println("请输入验证码:")
+	_, err := vcp.CaptureVCode(clientID, "login", "sjrand")
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("请输入验证码:")
 	var vcode string
-	// fmt.Scanf("%s", &vcode)
-	// fmt.Printf("输入的验证码为%s\n", vcode)
-	// _, err = vcp.CheckVCode(clientID, vcode)
-	// if err != nil {
-	// 	return false, err
-	// }
+	fmt.Scanf("%s", &vcode)
+	fmt.Printf("输入的验证码为%s\n", vcode)
+	_, err = vcp.CheckVCode(clientID, vcode)
+	if err != nil {
+		return false, err
+	}
+
+	time.Sleep(1 * time.Second)
 
 	vs := make(url.Values, 3)
 	vs.Add("loginUserDTO.user_name", username)
@@ -66,7 +69,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	for k, v := range req.Header {
 		fmt.Println(k, " ", v)
 	}
-	resp, err := piaohttputil.Do(clientID, "application/json;charset=UTF-8", req)
+	resp, err := piaohttputil.Do(clientID, "application/x-www-form-urlencoded; charset=UTF-8", req)
 
 	if err != nil {
 		return false, err

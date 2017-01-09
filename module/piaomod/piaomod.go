@@ -4,29 +4,82 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"traintickets/base/contract"
+	"traintickets/base/piaohttputil"
 )
-
-import "traintickets/base/piaohttputil"
 
 import "errors"
 
-var (
-	chanTRes = make(chan (*contract.TicketResult), 1024)
-)
+// var (
+// 	chanTRes = make(chan (*contract.TicketResult), 1024)
+// )
 
 //PIAO ...
 type PIAO struct {
 }
 
+var (
+	clientid int
+	mux      sync.Mutex
+)
+
+//QueryTicket ...
+func (piao *PIAO) QueryTicket(query *contract.TicketQuery) (<-chan *contract.TicketResult, []chan<- bool) {
+	clientid = safeAddValue(clientid, 1)
+	res := make(chan *contract.TicketResult, 1)
+	chanSlice := make([](chan<- bool), 10)
+
+	for i := 0; i < 1; i++ {
+		stopsign := make(chan bool, 1)
+		chanSlice = append(chanSlice, stopsign)
+		go func(<-chan bool) {
+			tickerChan := time.NewTicker(2 * time.Second).C
+			for {
+				stopf := false
+				select {
+				case <-stopsign:
+					stopf = true
+					break
+				case <-tickerChan:
+					log.Println("开始查询剩余车票")
+					err := queryATicket(clientid, query, res)
+					log.Println("结束查询剩余车票")
+					if err != nil {
+						fmt.Println(err.Error())
+						if err.Error() == "IS_TIME_NOT_BUY" {
+							stopf = true
+							break
+						}
+					}
+
+				}
+				if stopf {
+					break
+				}
+			}
+			fmt.Println("结束")
+
+		}(stopsign)
+	}
+	return res, chanSlice
+}
+
+func safeAddValue(v1 int, v2 int) int {
+	mux.Lock()
+	defer mux.Unlock()
+	return v1 + v2
+}
+
 //QueryATicket ...
-func (piao *PIAO) QueryATicket(clientID int, query *contract.TicketQuery) error {
+func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *contract.TicketResult) error {
 
 	r, err := ticketLog(clientID, query)
 	if err != nil {
@@ -47,19 +100,113 @@ func (piao *PIAO) QueryATicket(clientID int, query *contract.TicketQuery) error 
 
 	//判断是否存在指定的票
 	for _, p := range result.Data {
-		ywNum, _ := strconv.Atoi(p.Dto.YwNum)
-		if ywNum > 0 {
-			tRes := &contract.TicketResult{SecretStr: p.SecretStr, StationTrainCode: p.Dto.StationTrainCode}
-			chanTRes <- tRes
+		if p.Dto.CanWebBuy == "IS_TIME_NOT_BUY" {
+			return errors.New("IS_TIME_NOT_BUY")
 		}
+		//如果指定了车次则只判断指定的车次
+		if len(query.StationTrainCode) > 0 {
+			_, ok := query.StationTrainCode[strings.ToLower(p.Dto.StationTrainCode)]
+			if !ok {
+				continue
+			}
+		}
+		tc := &contract.TicketResult{
+			StationTrainCode:     p.Dto.StationTrainCode,
+			TrainDate:            query.TrainDate.Format("2006-01-02"),
+			BackTrainDate:        query.TrainDate.Format("2006-01-02"),
+			TourFlag:             "dc",
+			PurposeCodes:         query.PurposeCodes,
+			QueryFromStationName: query.FromStation,
+			QueryToStationName:   query.ToStation,
+		}
+		//判断指定的座位类型是否有票
+		for _, seat := range query.SeatTypes {
+			switch seat {
+			case contract.TZ: //特等
+				tzStr := p.Dto.TzNum
+				tzNum, _ := strconv.Atoi(p.Dto.TzNum)
+				if tzStr == "有" || tzNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.ZY: //一等
+				zyStr := p.Dto.ZyNum
+				zyNum, _ := strconv.Atoi(p.Dto.ZyNum)
+				if zyStr == "有" || zyNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.ZE: //二等
+				zeStr := p.Dto.ZeNum
+				zeNum, _ := strconv.Atoi(p.Dto.ZeNum)
+				if zeStr == "有" || zeNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.RW: //软卧
+				rwStr := p.Dto.RwNum
+				rwNum, _ := strconv.Atoi(p.Dto.RwNum)
+				if rwStr == "有" || rwNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+
+			case contract.YW: //硬卧
+				ywStr := p.Dto.YwNum
+				ywNum, _ := strconv.Atoi(p.Dto.YwNum)
+				if ywStr == "有" || ywNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.SRRB: //动卧
+				// srrbStr := p.Dto.num
+				// ywNum, _ := strconv.Atoi(p.Dto.YwNum)
+				// if ywStr == "有" || ywNum > 0 {
+				// 	//有票
+				// }
+			case contract.YYRW: //高级动卧
+			case contract.RZ: //软座
+				rzStr := p.Dto.RzNum
+				rzNum, _ := strconv.Atoi(p.Dto.RzNum)
+				if rzStr == "有" || rzNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.YZ: //硬座
+				ywStr := p.Dto.YwNum
+				ywNum, _ := strconv.Atoi(p.Dto.YwNum)
+				if ywStr == "有" || ywNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			case contract.WZ: //无座
+				wzStr := p.Dto.WzNum
+				wzNum, _ := strconv.Atoi(p.Dto.WzNum)
+				if wzStr == "有" || wzNum > 0 {
+					tc.SecretStr = p.SecretStr
+					tc.StationTrainCode = p.Dto.StationTrainCode
+					chanTRes <- tc
+				}
+			default:
+				return errors.New("无效的座位类型")
+			}
+		}
+
 	}
 	return nil
 }
 
-//TicketSResult ...
-func (piao *PIAO) TicketSResult() <-chan (*contract.TicketResult) {
-	return chanTRes
-}
+// //TicketSResult ...
+// func (piao *PIAO) TicketSResult() <-chan (*contract.TicketResult) {
+// 	return chanTRes
+// }
 
 //ResolveQueryAResult ...
 func resolveQueryAResult(data *bytes.Buffer) (*ticketResult, error) {

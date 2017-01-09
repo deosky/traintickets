@@ -1,7 +1,7 @@
 package base
 
 import (
-	"fmt"
+	"time"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
 )
@@ -43,15 +43,20 @@ func (client *client12306) Context() contract.IClientContext {
 	return client.context
 }
 
-func (client *client12306) QueryTicket(query contract.TicketQuery) error {
-	ticketMod := client.Context().TicketModule()
-	return ticketMod.QueryATicket(client.id, &query)
+func (client *client12306) QueryTicket(query *contract.TicketQuery) (<-chan *contract.TicketResult, []chan<- bool) {
+
+	return nil, nil
 }
 
-func (client *client12306) TicketSResult() <-chan (*contract.TicketResult) {
-	ticketMod := client.Context().TicketModule()
-	return ticketMod.TicketSResult()
-}
+// func (client *client12306) QueryTicket(query contract.TicketQuery) error {
+// 	ticketMod := client.Context().TicketModule()
+// 	return ticketMod.QueryATicket(client.id, &query)
+// }
+
+// func (client *client12306) TicketSResult() <-chan (*contract.TicketResult) {
+// 	ticketMod := client.Context().TicketModule()
+// 	return ticketMod.TicketSResult()
+// }
 
 func (client *client12306) CheckOrderInfo(ticket *contract.TicketResult, vcp contract.IVCode, lgm contract.ILogin) (bool, error) {
 
@@ -60,11 +65,23 @@ func (client *client12306) CheckOrderInfo(ticket *contract.TicketResult, vcp con
 
 //Start ...
 func (client *client12306) Start() {
-	lgm := client.Context().LoginModule()
-	vcp := client.Context().VCodeModule()
-	f, err := lgm.Login(client.id, "admin", "admin", vcp)
-	fmt.Println(f)
-	fmt.Println(err)
+	// lgm := client.Context().LoginModule()
+	// vcp := client.Context().VCodeModule()
+	// f, err := lgm.Login(client.id, "", "", vcp)
+	// fmt.Println(f)
+	// fmt.Println(err)
+
+	ticketMod := client.Context().TicketModule()
+	t, _ := time.Parse("2006-01-02", "2017-02-02")
+	query := &contract.TicketQuery{
+		TrainDate:    t,
+		FromStation:  "FYH",
+		ToStation:    "SHH",
+		PurposeCodes: "ADULT",
+		IntervalTime: 2 * time.Second,
+	}
+	ticketMod.QueryTicket(query)
+
 }
 
 //New12306Client ...
