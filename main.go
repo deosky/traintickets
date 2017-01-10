@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"traintickets/base"
 	"traintickets/module/loginmod"
-	"traintickets/module/piaomod"
+	"traintickets/module/ticketmod"
 	"traintickets/module/vcodemod"
 )
 
 func main() {
 	vcodeModule := &vcodemod.VCodeModule{}
 	loginModule := &loginmod.LoginModule{}
-	ticketModule := &piaomod.PIAO{}
+	ticketModule := &ticketmod.PIAO{}
 
 	sign := make(chan bool, 1)
 

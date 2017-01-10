@@ -1,4 +1,4 @@
-package piaomod
+package ticketmod
 
 //RespHead ...
 type RespHead struct {

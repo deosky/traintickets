@@ -29,5 +29,8 @@ type IVCode interface {
 
 //ITicket ...
 type ITicket interface {
-	QueryTicket(query *TicketQuery) (<-chan (*TicketResult), []chan<- bool)
+	QueryTicket(query *TicketQuery) <-chan *TicketResult
+	Wait() error
+	Stop()
+	ReStart() error
 }

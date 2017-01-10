@@ -1,4 +1,4 @@
-package piaomod
+package ticketmod
 
 import (
 	"bytes"
@@ -18,58 +18,109 @@ import (
 
 import "errors"
 
-// var (
-// 	chanTRes = make(chan (*contract.TicketResult), 1024)
-// )
+const (
+	//STOP 停止状态
+	STOP = -1
+	//RUN 运行状态
+	RUN = 0
+	//WAIT 等待状态
+	WAIT = 1
+)
 
 //PIAO ...
 type PIAO struct {
+	state int
 }
 
 var (
-	clientid int
-	mux      sync.Mutex
+	clientid         int
+	mux              sync.Mutex
+	chanStopSlice    = make([](chan<- bool), 1)
+	chanWaitSlice    = make([](chan<- bool), 1)
+	chanRestartSlice = make([](chan<- bool), 1)
 )
 
+//ReStart 重新启动所有的查票线程
+func (piao *PIAO) ReStart() error {
+	if piao.state == STOP {
+		return errors.New("STATE STOP")
+	}
+	if piao.state == WAIT {
+		for _, c := range chanRestartSlice {
+			c <- true
+		}
+	}
+	return nil
+}
+
+//Wait 阻塞所有的查票线程
+func (piao *PIAO) Wait() error {
+	if piao.state == STOP {
+		return errors.New("STATE STOP")
+	}
+	if piao.state != WAIT {
+		for _, c := range chanWaitSlice {
+			c <- true
+		}
+	}
+	return nil
+}
+
+//Stop 停止所有所有的查票线程
+func (piao *PIAO) Stop() {
+	if piao.state != STOP {
+		piao.ReStart()
+		for _, c := range chanStopSlice {
+			c <- true
+		}
+	}
+}
+
 //QueryTicket ...
-func (piao *PIAO) QueryTicket(query *contract.TicketQuery) (<-chan *contract.TicketResult, []chan<- bool) {
+func (piao *PIAO) QueryTicket(query *contract.TicketQuery) <-chan *contract.TicketResult {
 	clientid = safeAddValue(clientid, 1)
 	res := make(chan *contract.TicketResult, 1)
-	chanSlice := make([](chan<- bool), 10)
 
 	for i := 0; i < 1; i++ {
-		stopsign := make(chan bool, 1)
-		chanSlice = append(chanSlice, stopsign)
-		go func(<-chan bool) {
-			tickerChan := time.NewTicker(2 * time.Second).C
+		stopSign := make(chan bool, 1)
+		waitSign := make(chan bool, 1)
+		restartSign := make(chan bool, 1)
+		chanStopSlice = append(chanStopSlice, stopSign)
+		chanWaitSlice = append(chanWaitSlice, waitSign)
+		chanRestartSlice = append(chanRestartSlice, restartSign)
+		go func(s <-chan bool, w <-chan bool, r <-chan bool) {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+		stop:
 			for {
-				stopf := false
 				select {
-				case <-stopsign:
-					stopf = true
-					break
-				case <-tickerChan:
+				case <-s:
+					break stop
+				case <-w:
+					<-r
+				case <-ticker.C:
 					log.Println("开始查询剩余车票")
-					err := queryATicket(clientid, query, res)
+					f, ticket, err := queryATicket(clientid, query)
 					log.Println("结束查询剩余车票")
 					if err != nil {
 						fmt.Println(err.Error())
 						if err.Error() == "IS_TIME_NOT_BUY" {
-							stopf = true
-							break
+							break stop
 						}
+					}
+					//抢到票了
+					if f {
+						res <- ticket
+						//break stop
 					}
 
 				}
-				if stopf {
-					break
-				}
 			}
-			fmt.Println("结束")
+			log.Println("结束")
 
-		}(stopsign)
+		}(stopSign, waitSign, restartSign)
 	}
-	return res, chanSlice
+	return res
 }
 
 func safeAddValue(v1 int, v2 int) int {
@@ -79,29 +130,29 @@ func safeAddValue(v1 int, v2 int) int {
 }
 
 //QueryATicket ...
-func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *contract.TicketResult) error {
+func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.TicketResult, error) {
 
 	r, err := ticketLog(clientID, query)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 	if !r {
-		return errors.New("ticketLog false")
+		return false, nil, errors.New("ticketLog false")
 	}
 	res, err := queryTicket(clientID, query)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 
 	result, err := resolveQueryAResult(res)
 	if err != nil {
-		return err
+		return false, nil, err
 	}
 
 	//判断是否存在指定的票
 	for _, p := range result.Data {
 		if p.Dto.CanWebBuy == "IS_TIME_NOT_BUY" {
-			return errors.New("IS_TIME_NOT_BUY")
+			return false, nil, errors.New("IS_TIME_NOT_BUY")
 		}
 		//如果指定了车次则只判断指定的车次
 		if len(query.StationTrainCode) > 0 {
@@ -128,7 +179,7 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if tzStr == "有" || tzNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.ZY: //一等
 				zyStr := p.Dto.ZyNum
@@ -136,7 +187,7 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if zyStr == "有" || zyNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.ZE: //二等
 				zeStr := p.Dto.ZeNum
@@ -144,7 +195,7 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if zeStr == "有" || zeNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.RW: //软卧
 				rwStr := p.Dto.RwNum
@@ -152,16 +203,19 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if rwStr == "有" || rwNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 
 			case contract.YW: //硬卧
+				log.Println(p.Dto.YwNum)
 				ywStr := p.Dto.YwNum
 				ywNum, _ := strconv.Atoi(p.Dto.YwNum)
+				log.Println(ywStr)
+				log.Println(ywNum)
 				if ywStr == "有" || ywNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.SRRB: //动卧
 				// srrbStr := p.Dto.num
@@ -176,7 +230,7 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if rzStr == "有" || rzNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.YZ: //硬座
 				ywStr := p.Dto.YwNum
@@ -184,7 +238,7 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if ywStr == "有" || ywNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			case contract.WZ: //无座
 				wzStr := p.Dto.WzNum
@@ -192,15 +246,16 @@ func queryATicket(clientID int, query *contract.TicketQuery, chanTRes chan<- *co
 				if wzStr == "有" || wzNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
-					chanTRes <- tc
+					return true, tc, nil
 				}
 			default:
-				return errors.New("无效的座位类型")
+				return false, nil, errors.New("无效的座位类型")
 			}
 		}
+		return false, tc, nil
 
 	}
-	return nil
+	return false, nil, nil
 }
 
 // //TicketSResult ...

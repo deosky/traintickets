@@ -1,4 +1,4 @@
-package piaomod
+package ticketmod
 
 //submitOrderReqInfo ...
 type submitOrderReqInfo struct {
