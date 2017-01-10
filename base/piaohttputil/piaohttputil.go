@@ -53,6 +53,7 @@ func GetV(clientID int, urlStr, referer string, isXhr bool) (*http.Response, err
 	if err != nil {
 		return nil, err
 	}
+
 	SetReqHeader(req)
 	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("Referer", referer)
