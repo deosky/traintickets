@@ -111,8 +111,10 @@ func (piao *PIAO) QueryTicket(query *contract.TicketQuery) <-chan *contract.Tick
 					//抢到票了
 					if f {
 						log.Println("存在指定的票,开始买票")
+						log.Println(ticket)
 						res <- ticket
 						//break stop
+						piao.Wait()
 					}
 
 				}
@@ -216,6 +218,7 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 				if ywStr == "有" || ywNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
+					tc.SeatTypes = contract.YW
 					return true, tc, nil
 				}
 			case contract.SRRB: //动卧
@@ -239,6 +242,7 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 				if ywStr == "有" || ywNum > 0 {
 					tc.SecretStr = p.SecretStr
 					tc.StationTrainCode = p.Dto.StationTrainCode
+					tc.SeatTypes = contract.YZ
 					return true, tc, nil
 				}
 			case contract.WZ: //无座
@@ -253,8 +257,6 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 				return false, nil, errors.New("无效的座位类型")
 			}
 		}
-		return false, tc, nil
-
 	}
 	return false, nil, nil
 }

@@ -72,7 +72,7 @@ func (client *client12306) Start() {
 	// fmt.Println(err)
 
 	ticketMod := client.Context().TicketModule()
-	t, _ := time.Parse("2006-01-02", "2017-02-02")
+	t, _ := time.Parse("2006-01-02", "2017-02-07")
 	query := &contract.TicketQuery{
 		TrainDate:    t,
 		FromStation:  "FYH",
