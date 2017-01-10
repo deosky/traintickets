@@ -330,13 +330,13 @@ func queryTicket(clientID int, query *contract.TicketQuery) (*bytes.Buffer, erro
 
 //CheckOutOrder ...
 func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderContext) (bool, error) {
-	lgm := ckContext.Mod.Login
+	lgm := ckContext.LoginMod
 	f, err := lgm.CheckUser(clientID)
 	if err != nil {
 		return false, err
 	}
 	if !f {
-		_, err = lgm.Login(clientID, ckContext.UserName, ckContext.Pwd, ckContext.Mod.VCode)
+		_, err = lgm.Login(clientID, ckContext.UserName, ckContext.Pwd, ckContext.VCodeMod)
 		if err != nil {
 			return false, nil
 		}
@@ -380,10 +380,11 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 	}
 
 	//获取验证码，这里还需要判断TODO
-	_, err = ckContext.Mod.VCode.CaptureVCode(clientID, "passenger", "randp")
+	_, err = ckContext.VCodeMod.CaptureVCode(clientID, "passenger", "randp")
 	if err != nil {
 		return false, nil
 	}
+
 	checkOrderReq := &checkOrderReqInfo{
 		CancelFlag:         "2",
 		BedLevelOrderNum:   "000000000000000000000000000000",

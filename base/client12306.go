@@ -1,7 +1,7 @@
 package base
 
 import (
-	"time"
+	"log"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
 )
@@ -43,45 +43,53 @@ func (client *client12306) Context() contract.IClientContext {
 	return client.context
 }
 
-func (client *client12306) QueryTicket(query *contract.TicketQuery) (<-chan *contract.TicketResult, []chan<- bool) {
-
-	return nil, nil
-}
-
-// func (client *client12306) QueryTicket(query contract.TicketQuery) error {
-// 	ticketMod := client.Context().TicketModule()
-// 	return ticketMod.QueryATicket(client.id, &query)
-// }
-
-// func (client *client12306) TicketSResult() <-chan (*contract.TicketResult) {
-// 	ticketMod := client.Context().TicketModule()
-// 	return ticketMod.TicketSResult()
-// }
-
-func (client *client12306) CheckOrderInfo(ticket *contract.TicketResult, vcp contract.IVCode, lgm contract.ILogin) (bool, error) {
-
-	return true, nil
-}
-
-//Start ...
-func (client *client12306) Start() {
-	// lgm := client.Context().LoginModule()
-	// vcp := client.Context().VCodeModule()
-	// f, err := lgm.Login(client.id, "", "", vcp)
-	// fmt.Println(f)
-	// fmt.Println(err)
-
-	ticketMod := client.Context().TicketModule()
-	t, _ := time.Parse("2006-01-02", "2017-02-07")
-	query := &contract.TicketQuery{
-		TrainDate:    t,
-		FromStation:  "FYH",
-		ToStation:    "SHH",
-		PurposeCodes: "ADULT",
-		IntervalTime: 3 * time.Second,
-		SeatTypes:    []byte{contract.YW},
+//Start 开始刷票
+func (client *client12306) Start(query *contract.TicketQuery) {
+	lgm := client.Context().LoginModule()
+	vcp := client.Context().VCodeModule()
+	_, err := lgm.Login(client.id, "", "", vcp)
+	if err != nil {
+		log.Println("登陆失败:", err.Error())
+		return
 	}
-	ticketMod.QueryTicket(query)
+	log.Println("登陆成功")
+
+	log.Println("开始自动刷票中")
+	ticketMod := client.Context().TicketModule()
+	// t, _ := time.Parse("2006-01-02", "2017-02-07")
+	// query := &contract.TicketQuery{
+	// 	TrainDate:    t,
+	// 	FromStation:  "FYH",
+	// 	ToStation:    "SHH",
+	// 	PurposeCodes: "ADULT",
+	// 	IntervalTime: 3 * time.Second,
+	// 	SeatTypes:    []byte{contract.YW},
+	// }
+	log.Println("查票参数:", query)
+	res := ticketMod.QueryTicket(query)
+
+	//开始下单
+	for t := range res {
+		ck := &contract.CheckOutOrderContext{
+			// 		Mod               CheckOrderMod
+			// UserName          string
+			// Pwd               string
+			// PassengerIDCardNo []string
+			SecretStr: t.SecretStr,
+			// Train             TrainInfo
+			// SeatType          string
+			// TicketType        string
+		}
+		cf, err := ticketMod.CheckOutOrder(0, ck)
+		if err != nil {
+			log.Println("chekout err :", err.Error())
+			continue
+		}
+		if cf {
+			break
+		}
+		log.Println("chekout err")
+	}
 
 }
 

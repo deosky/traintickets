@@ -106,6 +106,7 @@ func PostV(clientID int, url, bodyType, referer string, isXhr bool, body io.Read
 
 	req.Header.Add("Referer", referer)
 	req.Header.Add("Content-Length", string(req.ContentLength))
+	log.Println("req.ContentLength", req.ContentLength)
 	if isXhr {
 		req.Header.Add("X-Requested-With", "XMLHttpRequest")
 	}
@@ -158,7 +159,7 @@ func ReadRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
 //SetReqHeader 设置消息头
 func SetReqHeader(req *http.Request) {
 	req.Header.Add("Accept", "*/*")
-	req.Header.Add("Accept-Language", "en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4")
+	req.Header.Add("Accept-Language", "zh-CN,zh;q=0.8")
 	req.Header.Add("Connection", "keep-alive")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36")
 	req.Host = "kyfw.12306.cn"

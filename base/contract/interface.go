@@ -3,8 +3,7 @@ package contract
 //IClient12306 ...
 type IClient12306 interface {
 	Context() IClientContext
-	QueryTicket(query *TicketQuery) (<-chan (*TicketResult), []chan<- bool)
-	Start()
+	Start(query *TicketQuery)
 }
 
 //IClientContext ...
@@ -33,4 +32,6 @@ type ITicket interface {
 	Wait() error
 	Stop()
 	ReStart() error
+
+	CheckOutOrder(clientID int, ckContext *CheckOutOrderContext) (bool, error)
 }

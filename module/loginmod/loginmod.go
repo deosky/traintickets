@@ -32,6 +32,7 @@ type LoginModule struct{}
 func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IVCode) (bool, error) {
 	urlStr := "https://kyfw.12306.cn/otn/login/loginAysnSuggest"
 
+	time.Sleep(2 * time.Second)
 	//捕获验证码
 	_, err := vcp.CaptureVCode(clientID, "login", "sjrand")
 	if err != nil {
@@ -46,7 +47,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 		return false, err
 	}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	vs := make(url.Values, 3)
 	vs.Add("loginUserDTO.user_name", username)
@@ -54,7 +55,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	vs.Add("randCode", vcode)
 
 	fmt.Printf("正在登陆 %s , %s , vcode:%s\n", username, pwd, vcode)
-	resp, err := piaohttputil.PostV(clientID, urlStr, "application/json;charset=UTF-8", "https://kyfw.12306.cn/otn/login/init", true, strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", "https://kyfw.12306.cn/otn/login/init", true, strings.NewReader(vs.Encode()))
 
 	if err != nil {
 		return false, err

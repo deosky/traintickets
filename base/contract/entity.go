@@ -30,12 +30,23 @@ const (
 	WZ = '0'
 )
 
+const (
+	//TICKETTYPEADULT 成人票
+	TICKETTYPEADULT int = 1
+	//TICKETTYPECHILD 儿童票
+	TICKETTYPECHILD int = 2
+	//TICKETTYPESTUDENT 学生票
+	TICKETTYPESTUDENT int = 3
+	//TICKETTYPECANJUN 残军票
+	TICKETTYPECANJUN int = 4
+)
+
 //TicketQuery ...
 type TicketQuery struct {
 	TrainDate        time.Time       //购票日期
 	FromStation      string          //始发站
 	ToStation        string          //到站
-	PurposeCodes     string          //类型
+	PurposeCodes     string          //乘车人类别 查票页面 ADULT成人票  0X00学生票
 	StationTrainCode map[string]byte //车次
 	SeatTypes        []byte          //座位类型
 	IntervalTime     time.Duration   //查询的间隔时间
@@ -47,7 +58,7 @@ type TicketResult struct {
 	StationTrainCode     string
 	TrainDate            string
 	BackTrainDate        string
-	TourFlag             string
+	TourFlag             string //dc表示单程
 	PurposeCodes         string
 	QueryFromStationName string
 	QueryToStationName   string
@@ -56,7 +67,8 @@ type TicketResult struct {
 
 //CheckOutOrderContext ...
 type CheckOutOrderContext struct {
-	Mod               CheckOrderMod
+	VCodeMod          IVCode
+	LoginMod          ILogin
 	UserName          string
 	Pwd               string
 	PassengerIDCardNo []string
@@ -66,18 +78,12 @@ type CheckOutOrderContext struct {
 	TicketType        string
 }
 
-//CheckOrderMod ...
-type CheckOrderMod struct {
-	VCode IVCode
-	Login ILogin
-}
-
 //TrainInfo ...
 type TrainInfo struct {
 	StationTrainCode     string
 	TrainDate            string
 	BackTrainDate        string
-	TourFlag             string
+	TourFlag             string //dc表示单程
 	PurposeCodes         string
 	QueryFromStationName string
 	QueryToStationName   string
