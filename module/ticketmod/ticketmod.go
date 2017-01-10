@@ -89,7 +89,7 @@ func (piao *PIAO) QueryTicket(query *contract.TicketQuery) <-chan *contract.Tick
 		chanWaitSlice = append(chanWaitSlice, waitSign)
 		chanRestartSlice = append(chanRestartSlice, restartSign)
 		go func(s <-chan bool, w <-chan bool, r <-chan bool) {
-			ticker := time.NewTicker(2 * time.Second)
+			ticker := time.NewTicker(query.IntervalTime)
 			defer ticker.Stop()
 		stop:
 			for {
@@ -110,6 +110,7 @@ func (piao *PIAO) QueryTicket(query *contract.TicketQuery) <-chan *contract.Tick
 					}
 					//抢到票了
 					if f {
+						log.Println("存在指定的票,开始买票")
 						res <- ticket
 						//break stop
 					}
@@ -282,9 +283,9 @@ func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 
 	formatStr := "https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
-	url := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
+	urlStr := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
 
-	resp, err := piaohttputil.Get(clientID, url)
+	resp, err := piaohttputil.GetV(clientID, urlStr, "https://kyfw.12306.cn/otn/leftTicket/init", true)
 	if err != nil {
 		return false, err
 	}
@@ -307,9 +308,9 @@ func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 func queryTicket(clientID int, query *contract.TicketQuery) (*bytes.Buffer, error) {
 	formatStr := "https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
-	url := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
+	urlStr := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
 
-	resp, err := piaohttputil.Get(clientID, url)
+	resp, err := piaohttputil.GetV(clientID, urlStr, "https://kyfw.12306.cn/otn/leftTicket/init", true)
 	if err != nil {
 		return nil, err
 	}

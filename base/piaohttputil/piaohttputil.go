@@ -2,8 +2,8 @@ package piaohttputil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"sync"
@@ -36,12 +36,35 @@ func (c *cJar) GetJar(id int) (*cookiejar.Jar, error) {
 
 //Get ...
 func Get(clientID int, urlStr string) (*http.Response, error) {
-	fmt.Println("req get:", urlStr)
+	log.Println("req get:", urlStr)
 
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	return getDo(clientID, req)
+}
+
+//GetV ...
+func GetV(clientID int, urlStr, referer string, isXhr bool) (*http.Response, error) {
+	log.Println("req getv:", urlStr)
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
+	SetReqHeader(req)
+	req.Header.Add("Cache-Control", "no-cache")
+	req.Header.Add("Referer", referer)
+	if isXhr {
+		req.Header.Add("X-Requested-With", "XMLHttpRequest")
+	}
+
+	return getDo(clientID, req)
+}
+
+//getDo ...
+func getDo(clientID int, req *http.Request) (*http.Response, error) {
 	jar, err := jarPool.GetJar(clientID)
 	if err != nil {
 		return nil, err
@@ -57,12 +80,6 @@ func Get(clientID int, urlStr string) (*http.Response, error) {
 	if rc := resp.Cookies(); len(rc) > 0 {
 		jar.SetCookies(req.URL, rc)
 	}
-	fmt.Println("print cookies")
-	for _, cookie := range jar.Cookies(req.URL) {
-		fmt.Println(cookie)
-	}
-	fmt.Println("print cookies end")
-
 	return resp, err
 }
 
@@ -73,11 +90,30 @@ func Post(clientID int, url string, bodyType string, body io.Reader) (*http.Resp
 	if err != nil {
 		return nil, err
 	}
-	return Do(clientID, bodyType, req)
+	return postDo(clientID, bodyType, req)
 }
 
-//Do ...
-func Do(clientID int, bodyType string, req *http.Request) (*http.Response, error) {
+//PostV ...
+func PostV(clientID int, url, bodyType, referer string, isXhr bool, body io.Reader) (*http.Response, error) {
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	SetReqHeader(req)
+
+	req.Header.Add("Referer", referer)
+	req.Header.Add("Content-Length", string(req.ContentLength))
+	if isXhr {
+		req.Header.Add("X-Requested-With", "XMLHttpRequest")
+	}
+
+	return postDo(clientID, bodyType, req)
+}
+
+//postDo ...
+func postDo(clientID int, bodyType string, req *http.Request) (*http.Response, error) {
 
 	jar, err := jarPool.GetJar(clientID)
 	if err != nil {
@@ -89,11 +125,6 @@ func Do(clientID int, bodyType string, req *http.Request) (*http.Response, error
 
 	req.Header.Set("Content-Type", bodyType)
 
-	// u, _ := url.Parse("https://192.168.0.2:8888")
-	// tr := &http.Transport{
-	// 	Proxy: http.ProxyURL(u),
-	// }
-	// client.Transport = tr
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -102,11 +133,6 @@ func Do(clientID int, bodyType string, req *http.Request) (*http.Response, error
 	if rc := resp.Cookies(); len(rc) > 0 {
 		jar.SetCookies(req.URL, rc)
 	}
-	fmt.Println("print cookies")
-	for _, cookie := range jar.Cookies(req.URL) {
-		fmt.Println(cookie)
-	}
-	fmt.Println("print cookies end")
 	return resp, err
 }
 
@@ -126,4 +152,13 @@ func ReadRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
 		}
 	}
 	return buf, nil
+}
+
+//SetReqHeader 设置消息头
+func SetReqHeader(req *http.Request) {
+	req.Header.Add("Accept", "*/*")
+	req.Header.Add("Accept-Language", "en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4")
+	req.Header.Add("Connection", "keep-alive")
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36")
+	req.Host = "kyfw.12306.cn"
 }

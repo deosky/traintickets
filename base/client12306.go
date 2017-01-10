@@ -78,7 +78,7 @@ func (client *client12306) Start() {
 		FromStation:  "FYH",
 		ToStation:    "SHH",
 		PurposeCodes: "ADULT",
-		IntervalTime: 2 * time.Second,
+		IntervalTime: 3 * time.Second,
 		SeatTypes:    []byte{contract.YW},
 	}
 	ticketMod.QueryTicket(query)

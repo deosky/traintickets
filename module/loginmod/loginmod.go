@@ -3,7 +3,6 @@ package loginmod
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -55,21 +54,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	vs.Add("randCode", vcode)
 
 	fmt.Printf("正在登陆 %s , %s , vcode:%s\n", username, pwd, vcode)
-	//resp, err := piaohttputil.Post(clientID, urlStr, "application/json;charset=UTF-8", strings.NewReader(vs.Encode()))
-
-	req, err := http.NewRequest("POST", urlStr, strings.NewReader(vs.Encode()))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Referer", "https://kyfw.12306.cn/otn/login/init")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36")
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	fmt.Println("head list")
-	for k, v := range req.Header {
-		fmt.Println(k, " ", v)
-	}
-	resp, err := piaohttputil.Do(clientID, "application/x-www-form-urlencoded; charset=UTF-8", req)
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/json;charset=UTF-8", "https://kyfw.12306.cn/otn/login/init", true, strings.NewReader(vs.Encode()))
 
 	if err != nil {
 		return false, err
