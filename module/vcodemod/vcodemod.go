@@ -72,12 +72,12 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 	defer file.Close()
 	file.Write(buf.Bytes())
 	base64Str := base64.StdEncoding.EncodeToString(buf.Bytes())
-	fmt.Println("data base64 str:=", base64Str)
+	//fmt.Println("data base64 str:=", base64Str)
 
 	md5n := md5.New()
 	md5n.Write(buf.Bytes())
 	cipherStr := md5n.Sum(nil)
-	fmt.Println("md5 bytes:=", cipherStr, "string:=", string(cipherStr), "hex string:=", hex.EncodeToString(cipherStr))
+	fmt.Println("md5 bytes:=", cipherStr, "hex string:=", hex.EncodeToString(cipherStr))
 
 	return &base64Str, nil
 }

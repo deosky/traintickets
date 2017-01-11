@@ -2,6 +2,7 @@ package piaohttputil
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 var (
 	jarPool = &cJar{jars: make(map[int]*cookiejar.Jar)}
-	//u, _    = url.Parse("http://10.20.111.66:8888")
+	//u, _    = url.Parse("http://192.168.0.11:8888")
 	// tr      = &http.Transport{
 	// 	Proxy: http.ProxyURL(u),
 	// 	TLSClientConfig: &tls.Config{
@@ -112,7 +113,7 @@ func PostV(clientID int, url, bodyType, referer string, isXhr bool, body io.Read
 	SetReqHeader(req)
 
 	req.Header.Add("Referer", referer)
-	req.Header.Add("Content-Length", string(req.ContentLength))
+	req.Header.Add("Content-Length", fmt.Sprintf("%d", req.ContentLength))
 	req.Header.Add("Origin", "https://kyfw.12306.cn")
 	log.Println("req.ContentLength", req.ContentLength)
 	if isXhr {

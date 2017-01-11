@@ -89,10 +89,10 @@ type getPassengerDTOResp struct {
 
 //passengerData
 type passengerData struct {
-	IsExist          string            `json:"isExist"`
+	IsExist          bool              `json:"isExist"`
 	ExMsg            string            `json:"exMsg"`
-	TwoIsOpenClick   []int             `json:"two_isOpenClick"`
-	OtherIsOpenClick []int             `json:"other_isOpenClick"`
+	TwoIsOpenClick   []string          `json:"two_isOpenClick"`
+	OtherIsOpenClick []string          `json:"other_isOpenClick"`
 	NormalPassengers []normalPassenger `json:"normal_passengers"`
 }
 
@@ -241,8 +241,8 @@ type orderRequestDTO struct {
 	StartTime           oderReqeustDTOTime `json:"start_time"`
 	StartTimeStr        string             `json:"start_time_str"`
 	StationTrainCode    string             `json:"station_train_code"`
-	StudentNum          string             `json:"student_num"`
-	TicketNum           string             `json:"ticket_num"`
+	StudentNum          int                `json:"student_num"`
+	TicketNum           int                `json:"ticket_num"`
 	TicketTypeOrderNum  string             `json:"ticket_type_order_num"`
 	ToStationName       string             `json:"to_station_name"`
 	ToStationTelecode   string             `json:"to_station_telecode"`
@@ -258,15 +258,15 @@ type orderRequestDTO struct {
 
 //oderReqeustDTOTime
 type oderReqeustDTOTime struct {
-	Date           int    `json:"date"`
-	Day            int    `json:"day"`
-	Hours          int    `json:"hours"`
-	Minutes        int    `json:"minutes"`
-	Month          int    `json:"month"`
-	Seconds        int    `json:"seconds"`
-	Time           uint64 `json:"time"`
-	TimezoneOffset int    `json:"timezoneOffset"`
-	Year           int    `json:"year"`
+	Date           int   `json:"date"`
+	Day            int   `json:"day"`
+	Hours          int   `json:"hours"`
+	Minutes        int   `json:"minutes"`
+	Month          int   `json:"month"`
+	Seconds        int   `json:"seconds"`
+	Time           int64 `json:"time"`
+	TimezoneOffset int   `json:"timezoneOffset"`
+	Year           int   `json:"year"`
 }
 
 //queryLeftTicketRequest ...

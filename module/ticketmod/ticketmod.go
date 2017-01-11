@@ -38,6 +38,13 @@ var (
 	chanStopSlice    = make([](chan<- bool), 1)
 	chanWaitSlice    = make([](chan<- bool), 1)
 	chanRestartSlice = make([](chan<- bool), 1)
+
+	pat1 = "globalRepeatSubmitToken\\s+=\\s+'([a-z0-9]+)'"
+	reg1 = regexp.MustCompile(pat1)
+	pat2 = "var\\s*ticketInfoForPassengerForm\\s*=\\s*(\\{.*\\})\\s*;"
+	reg2 = regexp.MustCompile(pat2)
+	pat3 = "'"
+	reg3 = regexp.MustCompile(pat3)
 )
 
 //ReStart 重新启动所有的查票线程
@@ -170,8 +177,10 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 			BackTrainDate:        query.TrainDate.Format("2006-01-02"),
 			TourFlag:             "dc",
 			PurposeCodes:         query.PurposeCodes,
-			QueryFromStationName: query.FromStation,
-			QueryToStationName:   query.ToStation,
+			QueryFromStationName: p.Dto.FromStationName,
+			QueryToStationName:   p.Dto.ToStationName,
+			FromStationTelecode:  p.Dto.FromStationTelecode,
+			ToStationTelecode:    p.Dto.ToStationTelecode,
 		}
 		//判断指定的座位类型是否有票
 		for _, seat := range query.SeatTypes {
@@ -348,7 +357,7 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 		TrainDate:            ckContext.Train.TrainDate,
 		BackTrainDate:        ckContext.Train.BackTrainDate,
 		TourFlag:             ckContext.Train.TourFlag,
-		PurposeCodes:         "1",
+		PurposeCodes:         ckContext.Train.PurposeCodes,
 		QueryFromStationName: ckContext.Train.QueryFromStationName,
 		QueryToStationName:   ckContext.Train.QueryToStationName,
 	}
@@ -356,7 +365,7 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 	if err != nil {
 		return false, err
 	}
-	time.Sleep(1 * time.Second)
+	//time.Sleep(1 * time.Second)
 	initDcInfo, err := confirmPassengerInitDc(clientID)
 	if err != nil {
 		return false, err
@@ -369,12 +378,14 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 	if err != nil {
 		return false, err
 	}
-	orderPassengers := make([]normalPassenger, len(ckContext.PassengerIDCardNo))
+	orderPassengers := []normalPassenger{}
 	//取得订单人信息
+nextPassenger:
 	for _, id := range ckContext.PassengerIDCardNo {
 		for _, p := range passengers.Data.NormalPassengers {
 			if p.PassengerIDNo == id {
 				orderPassengers = append(orderPassengers, p)
+				continue nextPassenger
 			}
 		}
 		return false, fmt.Errorf("未找到身份证号码为%s的乘客信息下单失败", id)
@@ -415,12 +426,13 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 	requestDtoTrainDate := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO.TrainDate
 	orderRequestDTO := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO
 	leftTicketRequestDTO := initDcInfo.QueryLeftTicketRequest
-	trainTime, err := time.Parse("Mon Jan 02 2006 00:00:00 GMT+0800", string(requestDtoTrainDate.Year)+"-"+string(requestDtoTrainDate.Month)+"-"+string(requestDtoTrainDate.Day))
+	ts := requestDtoTrainDate.Time / 100
+	t := time.Unix(ts, 0)
 	if err != nil {
 		return false, err
 	}
 	getQueueCountR := &getQueueCountReq{
-		TrainDate:           trainTime.Format("Mon Jan 02 2006 00:00:00 GMT+0800"),
+		TrainDate:           t.Format("Mon Jan 02 2006 15:04:05 GMT+0800"),
 		TrainNo:             orderRequestDTO.TrainNo,
 		StationTrainCode:    orderRequestDTO.StationTrainCode,
 		SeatType:            ckContext.SeatType,
@@ -459,7 +471,8 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 //submitOrderRequest ...
 func submitOrderRequest(clientID int, reqInfo *submitOrderReqInfo) error {
 	vs := make(url.Values, 8)
-	vs.Add("secretStr", reqInfo.SecretStr)
+	secretStr, _ := url.QueryUnescape(reqInfo.SecretStr)
+	vs.Add("secretStr", secretStr)
 	vs.Add("train_date", reqInfo.TrainDate)
 	vs.Add("back_train_date", reqInfo.BackTrainDate)
 	vs.Add("tour_flag", reqInfo.TourFlag)
@@ -487,6 +500,9 @@ func submitOrderRequest(clientID int, reqInfo *submitOrderReqInfo) error {
 	if err != nil {
 		return err
 	}
+	if res.Status != true {
+		return errors.New(fmt.Sprintln(res.Messages))
+	}
 	return nil
 }
 
@@ -511,22 +527,22 @@ func confirmPassengerInitDc(clientID int) (*confirmPassengerInitDcResp, error) {
 	respData := buf.Bytes()
 	fmt.Println(string(respData))
 	res := &confirmPassengerInitDcResp{}
-	pat1 := "globalRepeatSubmitToken\\s+=\\s+'([a-z0-9]+)'"
-	reg1 := regexp.MustCompile(pat1)
+
 	groups1 := reg1.FindSubmatch(respData)
 	if len(groups1) < 2 {
 		return nil, fmt.Errorf("未匹配到globalRepeatSubmitToken的值！")
 	}
 	res.GlobalRepeatSubmitToken = string(groups1[1])
 
-	pat2 := "var\\s*ticketInfoForPassengerForm\\s*=\\s*(\\{.*\\})\\s*;"
-	reg2 := regexp.MustCompile(pat2)
 	groups2 := reg2.FindSubmatch(respData)
 	if len(groups2) < 2 {
 		return nil, fmt.Errorf("未匹配到ticketInfoForPassengerForm的值！")
 	}
+
+	jStr := reg3.ReplaceAll(groups2[1], []byte{'"'})
+
 	ticketPassengerForm := &ticketInfoForPassengerForm{}
-	err = json.Unmarshal(groups2[1], ticketPassengerForm)
+	err = json.Unmarshal(jStr, ticketPassengerForm)
 	if err != nil {
 		return nil, err
 	}

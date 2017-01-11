@@ -60,9 +60,11 @@ type TicketResult struct {
 	BackTrainDate        string
 	TourFlag             string //dc表示单程
 	PurposeCodes         string
-	QueryFromStationName string
-	QueryToStationName   string
-	SeatTypes            byte //座位类型
+	QueryFromStationName string //中文
+	QueryToStationName   string //中文
+	FromStationTelecode  string //编号
+	ToStationTelecode    string //编号
+	SeatTypes            byte   //座位类型
 }
 
 //CheckOutOrderContext ...
