@@ -426,8 +426,8 @@ nextPassenger:
 	requestDtoTrainDate := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO.TrainDate
 	orderRequestDTO := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO
 	leftTicketRequestDTO := initDcInfo.QueryLeftTicketRequest
-	ts := requestDtoTrainDate.Time / 100
-	t := time.Unix(ts, 0)
+	ts := requestDtoTrainDate.Time / 1000
+	t := time.Unix(ts, 000)
 	if err != nil {
 		return false, err
 	}
