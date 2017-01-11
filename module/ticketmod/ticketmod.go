@@ -347,7 +347,7 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 		StationTrainCode:     ckContext.Train.StationTrainCode,
 		TrainDate:            ckContext.Train.TrainDate,
 		BackTrainDate:        ckContext.Train.BackTrainDate,
-		TourFlag:             "dc",
+		TourFlag:             ckContext.Train.TourFlag,
 		PurposeCodes:         "1",
 		QueryFromStationName: ckContext.Train.QueryFromStationName,
 		QueryToStationName:   ckContext.Train.QueryToStationName,
@@ -356,6 +356,7 @@ func (piao *PIAO) CheckOutOrder(clientID int, ckContext *contract.CheckOutOrderC
 	if err != nil {
 		return false, err
 	}
+	time.Sleep(1 * time.Second)
 	initDcInfo, err := confirmPassengerInitDc(clientID)
 	if err != nil {
 		return false, err
@@ -495,7 +496,7 @@ func confirmPassengerInitDc(clientID int) (*confirmPassengerInitDcResp, error) {
 	vs := make(url.Values, 1)
 	vs.Add("_json_att", "")
 
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded", strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded", "https://kyfw.12306.cn/otn/leftTicket/init", false, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -507,18 +508,20 @@ func confirmPassengerInitDc(clientID int) (*confirmPassengerInitDcResp, error) {
 	if err != nil {
 		return nil, err
 	}
+	respData := buf.Bytes()
+	fmt.Println(string(respData))
 	res := &confirmPassengerInitDcResp{}
 	pat1 := "globalRepeatSubmitToken\\s+=\\s+'([a-z0-9]+)'"
 	reg1 := regexp.MustCompile(pat1)
-	groups1 := reg1.FindSubmatch(buf.Bytes())
+	groups1 := reg1.FindSubmatch(respData)
 	if len(groups1) < 2 {
 		return nil, fmt.Errorf("未匹配到globalRepeatSubmitToken的值！")
 	}
 	res.GlobalRepeatSubmitToken = string(groups1[1])
 
-	pat2 := "var\\sticketInfoForPassengerForm\\s*=\\s*(\\{.*})\\s*;"
+	pat2 := "var\\s*ticketInfoForPassengerForm\\s*=\\s*(\\{.*\\})\\s*;"
 	reg2 := regexp.MustCompile(pat2)
-	groups2 := reg2.FindSubmatch(buf.Bytes())
+	groups2 := reg2.FindSubmatch(respData)
 	if len(groups2) < 2 {
 		return nil, fmt.Errorf("未匹配到ticketInfoForPassengerForm的值！")
 	}
@@ -604,7 +607,7 @@ func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp,
 	vs.Add("train_date", reqInfo.TrainDate)
 	vs.Add("train_no", reqInfo.TrainNo)
 	vs.Add("stationTrainCode", reqInfo.StationTrainCode)
-	vs.Add("seatType", reqInfo.SeatType)
+	vs.Add("seatType", string(reqInfo.SeatType))
 	vs.Add("fromStationTelecode", reqInfo.FromStationTelecode)
 	vs.Add("toStationTelecode", reqInfo.ToStationTelecode)
 	vs.Add("leftTicket", reqInfo.LeftTicket)
@@ -678,10 +681,10 @@ func queryOrderWaitTime(clientID int, reqInfo queryOrderWaitTimeReq) (*queryOrde
 }
 
 //getpassengerTickets ...
-func getpassengerTickets(passengers []normalPassenger, seatType, ticketType string) string {
+func getpassengerTickets(passengers []normalPassenger, seatType byte, ticketType int) string {
 	reslt := &bytes.Buffer{}
 	for _, p := range passengers {
-		b := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s", seatType, "0", ticketType, p.PassengerName, p.PassengerIDTypeCode, p.PassengerIDNo, p.PhoneNo, "N")
+		b := fmt.Sprintf("%c,%s,%d,%s,%s,%s,%s,%s", seatType, "0", ticketType, p.PassengerName, p.PassengerIDTypeCode, p.PassengerIDNo, p.PhoneNo, "N")
 		reslt.WriteString(b + "_")
 	}
 	return string(reslt.Bytes()[:len(reslt.Bytes())-1])

@@ -74,8 +74,8 @@ type CheckOutOrderContext struct {
 	PassengerIDCardNo []string
 	SecretStr         string
 	Train             TrainInfo
-	SeatType          string
-	TicketType        string
+	SeatType          byte
+	TicketType        int
 }
 
 //TrainInfo ...

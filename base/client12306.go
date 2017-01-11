@@ -56,7 +56,7 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 
 	log.Println("开始自动刷票中")
 	ticketMod := client.Context().TicketModule()
-	// t, _ := time.Parse("2006-01-02", "2017-02-07")
+	//t, _ := time.Parse("2006-01-02", "2017-02-07")
 	// query := &contract.TicketQuery{
 	// 	TrainDate:    t,
 	// 	FromStation:  "FYH",
@@ -71,14 +71,23 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 	//开始下单
 	for t := range res {
 		ck := &contract.CheckOutOrderContext{
-			// 		Mod               CheckOrderMod
-			// UserName          string
-			// Pwd               string
-			// PassengerIDCardNo []string
-			SecretStr: t.SecretStr,
-			// Train             TrainInfo
-			// SeatType          string
-			// TicketType        string
+			VCodeMod:          client.Context().VCodeModule(),
+			LoginMod:          client.Context().LoginModule(),
+			UserName:          "",
+			Pwd:               "",
+			PassengerIDCardNo: []string{""},
+			SecretStr:         t.SecretStr,
+			Train: contract.TrainInfo{
+				StationTrainCode:     t.StationTrainCode,
+				TrainDate:            t.TrainDate,
+				BackTrainDate:        t.BackTrainDate,
+				TourFlag:             t.TourFlag,
+				PurposeCodes:         t.PurposeCodes,
+				QueryFromStationName: t.QueryFromStationName,
+				QueryToStationName:   t.QueryToStationName,
+			},
+			SeatType:   t.SeatTypes,
+			TicketType: contract.TICKETTYPEADULT,
 		}
 		cf, err := ticketMod.CheckOutOrder(0, ck)
 		if err != nil {
@@ -95,8 +104,8 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 
 //New12306Client ...
 func New12306Client(context contract.IClientContext, urlStr string) (contract.IClient12306, error) {
-	clientid := 1
-	resp, err := piaohttputil.Get(clientid, urlStr)
+	clientid := 0
+	resp, err := piaohttputil.GetV(clientid, urlStr, "https://kyfw.12306.cn/otn/", false)
 	if err != nil {
 		return nil, err
 	}

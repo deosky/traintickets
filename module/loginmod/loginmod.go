@@ -3,6 +3,8 @@ package loginmod
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -40,7 +42,18 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	}
 	fmt.Println("请输入验证码:")
 	var vcode string
-	fmt.Scanf("%s", &vcode)
+	conn, err := net.Dial("tcp", "127.0.0.1:8686")
+	if err != nil {
+		return false, err
+	}
+	v, err := ioutil.ReadAll(conn)
+	conn.Close()
+	if err != nil {
+		return false, err
+	}
+	vcode = string(v)
+
+	// fmt.Scanf("%s", &vcode)
 	fmt.Printf("输入的验证码为%s\n", vcode)
 	_, err = vcp.CheckVCode(clientID, vcode)
 	if err != nil {
@@ -79,6 +92,11 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	if res.Data.LoginCheck != "Y" {
 		return false, fmt.Errorf("%v\r\n%v", res.Messages, res.Data)
 	}
+	vs1 := make(url.Values, 1)
+	vs1.Add("_json_att=", "")
+
+	//piaohttputil.PostV(clientID, "https://kyfw.12306.cn/otn/login/userLogin", "application/x-www-form-urlencoded", "https://kyfw.12306.cn/otn/login/init", false, strings.NewReader(vs1.Encode()))
+
 	fmt.Println("登陆成功!!!")
 
 	resp1, _ := piaohttputil.Get(clientID, "https://kyfw.12306.cn/otn/index/initMy12306")

@@ -26,7 +26,7 @@ func main() {
 		fmt.Println("初始化成功")
 	}
 
-	t, _ := time.Parse("2006-01-02", "2017-02-07")
+	t, _ := time.Parse("2006-01-02", "2017-02-08")
 	query := &contract.TicketQuery{
 		TrainDate:    t,
 		FromStation:  "FYH",

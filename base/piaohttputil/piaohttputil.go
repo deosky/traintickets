@@ -10,8 +10,15 @@ import (
 )
 
 var (
-	client  = &http.Client{}
 	jarPool = &cJar{jars: make(map[int]*cookiejar.Jar)}
+	//u, _    = url.Parse("http://10.20.111.66:8888")
+	// tr      = &http.Transport{
+	// 	Proxy: http.ProxyURL(u),
+	// 	TLSClientConfig: &tls.Config{
+	// 		InsecureSkipVerify: true,
+	// 	},
+	// }
+	client = &http.Client{}
 )
 
 //cJar ...
@@ -106,6 +113,7 @@ func PostV(clientID int, url, bodyType, referer string, isXhr bool, body io.Read
 
 	req.Header.Add("Referer", referer)
 	req.Header.Add("Content-Length", string(req.ContentLength))
+	req.Header.Add("Origin", "https://kyfw.12306.cn")
 	log.Println("req.ContentLength", req.ContentLength)
 	if isXhr {
 		req.Header.Add("X-Requested-With", "XMLHttpRequest")
@@ -158,7 +166,7 @@ func ReadRespBody(resp io.ReadCloser) (*bytes.Buffer, error) {
 
 //SetReqHeader 设置消息头
 func SetReqHeader(req *http.Request) {
-	req.Header.Add("Accept", "*/*")
+	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
 	req.Header.Add("Accept-Language", "zh-CN,zh;q=0.8")
 	req.Header.Add("Connection", "keep-alive")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36")

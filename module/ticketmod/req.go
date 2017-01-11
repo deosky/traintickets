@@ -35,7 +35,7 @@ type getQueueCountReq struct {
 	TrainDate           string
 	TrainNo             string
 	StationTrainCode    string
-	SeatType            string
+	SeatType            byte
 	FromStationTelecode string
 	ToStationTelecode   string
 	LeftTicket          string
