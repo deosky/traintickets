@@ -99,6 +99,7 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 		}
 		log.Println("chekout err")
 	}
+	log.Println("checkout success.")
 
 }
 
