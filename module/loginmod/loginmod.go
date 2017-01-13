@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -99,11 +100,15 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 
 	fmt.Println("登陆成功!!!")
 
-	resp1, _ := piaohttputil.Get(clientID, "https://kyfw.12306.cn/otn/index/initMy12306")
-	defer resp.Body.Close()
-	buf, err = piaohttputil.ReadRespBody(resp1.Body)
-	fmt.Println("登陆页面展示")
-	fmt.Println(buf.String())
+	resp1, err := piaohttputil.Get(clientID, "https://kyfw.12306.cn/otn/index/initMy12306")
+	if err != nil {
+		log.Println(err)
+		return false, fmt.Errorf("#102,%s", err.Error())
+	}
+	defer resp1.Body.Close()
+	//buf, err = piaohttputil.ReadRespBody(resp1.Body)
+	// fmt.Println("登陆页面展示")
+	// fmt.Println(buf.String())
 
 	return true, nil
 }

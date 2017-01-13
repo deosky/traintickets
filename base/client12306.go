@@ -45,9 +45,12 @@ func (client *client12306) Context() contract.IClientContext {
 
 //Start 开始刷票
 func (client *client12306) Start(query *contract.TicketQuery) {
+	username := ""
+	pwd := ""
+
 	lgm := client.Context().LoginModule()
 	vcp := client.Context().VCodeModule()
-	_, err := lgm.Login(client.id, "", "", vcp)
+	_, err := lgm.Login(client.id, username, pwd, vcp)
 	if err != nil {
 		log.Println("登陆失败:", err.Error())
 		return
@@ -73,8 +76,8 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 		ck := &contract.CheckOutOrderContext{
 			VCodeMod:          client.Context().VCodeModule(),
 			LoginMod:          client.Context().LoginModule(),
-			UserName:          "",
-			Pwd:               "",
+			UserName:          username,
+			Pwd:               pwd,
 			PassengerIDCardNo: []string{""},
 			SecretStr:         t.SecretStr,
 			Train: contract.TrainInfo{

@@ -186,21 +186,21 @@ type queryOrderWaitTimeData struct {
 type confirmPassengerInitDcResp struct {
 	GlobalRepeatSubmitToken    string
 	TicketInfoForPassengerForm *ticketInfoForPassengerForm
-	QueryLeftTicketRequest     *queryLeftTicketRequestDTO
 }
 
 //ticketInfoForPassengerForm
 type ticketInfoForPassengerForm struct {
-	CardTypes        []cardType      `json:"cardTypes"`
-	IsAsync          string          `json:"isAsync"`
-	KeyCheckIsChange string          `json:"key_check_isChange"`
-	LeftDetails      []string        `json:"leftDetails"`
-	LeftTicketStr    string          `json:"leftTicketStr"`
-	MaxTicketNum     string          `json:"maxTicketNum"`
-	OrderRequestDTO  orderRequestDTO `json:"orderRequestDTO"`
-	PurposeCodes     string          `json:"purpose_codes"`
-	TourFlag         string          `json:"tour_flag"`
-	TrainLocation    string          `json:"train_location"`
+	CardTypes              []cardType                 `json:"cardTypes"`
+	IsAsync                string                     `json:"isAsync"`
+	KeyCheckIsChange       string                     `json:"key_check_isChange"`
+	LeftDetails            []string                   `json:"leftDetails"`
+	LeftTicketStr          string                     `json:"leftTicketStr"`
+	MaxTicketNum           string                     `json:"maxTicketNum"`
+	OrderRequestDTO        orderRequestDTO            `json:"orderRequestDTO"`
+	PurposeCodes           string                     `json:"purpose_codes"`
+	TourFlag               string                     `json:"tour_flag"`
+	TrainLocation          string                     `json:"train_location"`
+	QueryLeftTicketRequest *queryLeftTicketRequestDTO `json:"queryLeftTicketRequestDTO"`
 }
 
 type cardType struct {

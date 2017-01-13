@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -425,22 +424,30 @@ nextPassenger:
 	}
 	requestDtoTrainDate := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO.TrainDate
 	orderRequestDTO := initDcInfo.TicketInfoForPassengerForm.OrderRequestDTO
-	leftTicketRequestDTO := initDcInfo.QueryLeftTicketRequest
+	leftTicketRequestDTO := initDcInfo.TicketInfoForPassengerForm.QueryLeftTicketRequest
 	ts := requestDtoTrainDate.Time / 1000
 	t := time.Unix(ts, 000)
 	if err != nil {
 		return false, err
 	}
+	ypInfo := leftTicketRequestDTO.YpInfoDetail
+	leftTicketStr, err := url.QueryUnescape(initDcInfo.TicketInfoForPassengerForm.LeftTicketStr)
+	if err != nil {
+		return false, fmt.Errorf("leftTicketStr解码失败:%s,raw:%s", err.Error(), initDcInfo.TicketInfoForPassengerForm.LeftTicketStr)
+	}
+
 	getQueueCountR := &getQueueCountReq{
-		TrainDate:           t.Format("Mon Jan 02 2006 15:04:05 GMT+0800"),
+		TrainDate:           t.Format("Mon Jan 02 2006 15:04:05 GMT+0800 (China Standard Time)"),
 		TrainNo:             orderRequestDTO.TrainNo,
 		StationTrainCode:    orderRequestDTO.StationTrainCode,
 		SeatType:            ckContext.SeatType,
 		FromStationTelecode: orderRequestDTO.FromStationTelecode,
 		ToStationTelecode:   orderRequestDTO.ToStationTelecode,
-		LeftTicket:          leftTicketRequestDTO.YpInfoDetail,
+		LeftTicket:          ypInfo,
 		PurposeCodes:        initDcInfo.TicketInfoForPassengerForm.PurposeCodes,
 		TrainLocation:       initDcInfo.TicketInfoForPassengerForm.TrainLocation,
+		RepeatSubmitToken:   initDcInfo.GlobalRepeatSubmitToken,
+		JSONAtt:             "",
 	}
 	getQueueCount(clientID, getQueueCountR)
 
@@ -450,12 +457,14 @@ nextPassenger:
 		RandCode:           "",
 		PurposeCodes:       initDcInfo.TicketInfoForPassengerForm.PurposeCodes,
 		KeyCheckIsChange:   initDcInfo.TicketInfoForPassengerForm.KeyCheckIsChange,
-		LeftTicketStr:      initDcInfo.TicketInfoForPassengerForm.LeftTicketStr,
+		LeftTicketStr:      leftTicketStr,
 		TrainLocation:      initDcInfo.TicketInfoForPassengerForm.TrainLocation,
 		ChooseSeats:        "",
 		SeatDetailType:     "000",
 		RoomType:           "00",
 		DwAll:              "N",
+		JSONAtt:            "",
+		RepeatSubmitToken:  initDcInfo.GlobalRepeatSubmitToken,
 	}
 	orderForQueueResult, err := confirmSingleForQueue(clientID, oderforQueue)
 	if err != nil {
@@ -525,7 +534,7 @@ func confirmPassengerInitDc(clientID int) (*confirmPassengerInitDcResp, error) {
 		return nil, err
 	}
 	respData := buf.Bytes()
-	fmt.Println(string(respData))
+	//fmt.Println(string(respData))
 	res := &confirmPassengerInitDcResp{}
 
 	groups1 := reg1.FindSubmatch(respData)
@@ -623,7 +632,7 @@ func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp,
 	vs.Add("train_date", reqInfo.TrainDate)
 	vs.Add("train_no", reqInfo.TrainNo)
 	vs.Add("stationTrainCode", reqInfo.StationTrainCode)
-	vs.Add("seatType", string(reqInfo.SeatType))
+	vs.Add("seatType", fmt.Sprintf("%c", reqInfo.SeatType))
 	vs.Add("fromStationTelecode", reqInfo.FromStationTelecode)
 	vs.Add("toStationTelecode", reqInfo.ToStationTelecode)
 	vs.Add("leftTicket", reqInfo.LeftTicket)
@@ -650,14 +659,22 @@ func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp,
 
 func confirmSingleForQueue(clientID int, reqInfo *confirmSingleForQueueReq) (*confirmSingleForQueueResp, error) {
 	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue"
-	rtReq := reflect.TypeOf(reqInfo)
-	rtReqValue := reflect.ValueOf(reqInfo)
-	vs := make(url.Values, rtReq.NumField())
-	for i := 0; i < rtReq.NumField(); i++ {
-		vs.Add(rtReq.Field(i).Tag.Get("name"), rtReqValue.Field(i).String())
-	}
+	vs := make(url.Values, 13)
+	vs.Add("passengerTicketStr", reqInfo.PassengerTicketStr)
+	vs.Add("oldPassengerStr", reqInfo.OldPassengerStr)
+	vs.Add("randCode", reqInfo.RandCode)
+	vs.Add("purpose_codes", reqInfo.PurposeCodes)
+	vs.Add("key_check_isChange", reqInfo.KeyCheckIsChange)
+	vs.Add("leftTicketStr", reqInfo.LeftTicketStr)
+	vs.Add("train_location", reqInfo.TrainLocation)
+	vs.Add("choose_seats", reqInfo.ChooseSeats)
+	vs.Add("seatDetailType", reqInfo.SeatDetailType)
+	vs.Add("roomType", reqInfo.RoomType)
+	vs.Add("dwAll", reqInfo.DwAll)
+	vs.Add("_json_att", reqInfo.JSONAtt)
+	vs.Add("REPEAT_SUBMIT_TOKEN", reqInfo.RepeatSubmitToken)
 
-	resp, err := piaohttputil.Post(clientID, urlStr, "", strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", "https://kyfw.12306.cn/otn/confirmPassenger/initDc", true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -669,6 +686,7 @@ func confirmSingleForQueue(clientID int, reqInfo *confirmSingleForQueueReq) (*co
 	res := &confirmSingleForQueueResp{}
 	err = json.Unmarshal(buf.Bytes(), res)
 	if err != nil {
+		log.Println(string(buf.Bytes()))
 		return nil, err
 	}
 
@@ -700,7 +718,7 @@ func queryOrderWaitTime(clientID int, reqInfo queryOrderWaitTimeReq) (*queryOrde
 func getpassengerTickets(passengers []normalPassenger, seatType byte, ticketType int) string {
 	reslt := &bytes.Buffer{}
 	for _, p := range passengers {
-		b := fmt.Sprintf("%c,%s,%d,%s,%s,%s,%s,%s", seatType, "0", ticketType, p.PassengerName, p.PassengerIDTypeCode, p.PassengerIDNo, p.PhoneNo, "N")
+		b := fmt.Sprintf("%c,%s,%d,%s,%s,%s,%s,%s", seatType, "0", ticketType, p.PassengerName, p.PassengerIDTypeCode, p.PassengerIDNo, p.MobileNo, "N")
 		reslt.WriteString(b + "_")
 	}
 	return string(reslt.Bytes()[:len(reslt.Bytes())-1])

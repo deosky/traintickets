@@ -1,0 +1,10 @@
+{
+    "cdnIpAddr":[
+        "61.155.162.122",
+        "211.144.7.86",
+        "183.134.10.85"
+    ],
+    "initUrl":"https://kyfw.12306.cn/otn/login/init",
+    "mainUrl":"https://kyfw.12306.cn/",
+    "ctx":"otn"
+}
