@@ -9,8 +9,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"traintickets/base/appconfig"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
+)
+
+var (
+	appconf = appconfig.GetAppConfig()
 )
 
 //checkUserResult ...
@@ -33,11 +38,14 @@ type LoginModule struct{}
 
 //Login ...
 func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IVCode) (bool, error) {
-	urlStr := "https://kyfw.12306.cn/otn/login/loginAysnSuggest"
 
+	urlStr, err := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/loginAysnSuggest")
+	if err != nil {
+		return false, nil
+	}
 	time.Sleep(2 * time.Second)
 	//捕获验证码
-	_, err := vcp.CaptureVCode(clientID, "login", "sjrand")
+	_, err = vcp.CaptureVCode(clientID, "login", "sjrand")
 	if err != nil {
 		return false, err
 	}
@@ -69,7 +77,9 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	vs.Add("randCode", vcode)
 
 	fmt.Printf("正在登陆 %s , %s , vcode:%s\n", username, pwd, vcode)
-	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", "https://kyfw.12306.cn/otn/login/init", true, strings.NewReader(vs.Encode()))
+
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/init")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 
 	if err != nil {
 		return false, err
@@ -99,8 +109,8 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	//piaohttputil.PostV(clientID, "https://kyfw.12306.cn/otn/login/userLogin", "application/x-www-form-urlencoded", "https://kyfw.12306.cn/otn/login/init", false, strings.NewReader(vs1.Encode()))
 
 	fmt.Println("登陆成功!!!")
-
-	resp1, err := piaohttputil.Get(clientID, "https://kyfw.12306.cn/otn/index/initMy12306")
+	initMy12306UrlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "index/initMy12306")
+	resp1, err := piaohttputil.Get(clientID, initMy12306UrlStr)
 	if err != nil {
 		log.Println(err)
 		return false, fmt.Errorf("#102,%s", err.Error())
@@ -115,10 +125,11 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 
 //CheckUser ...
 func (lm *LoginModule) CheckUser(clientID int) (bool, error) {
-
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/checkUser")
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/init")
 	vs := make(url.Values, 1)
 	vs.Add("_json_att", "")
-	resp, err := piaohttputil.Post(clientID, "https://kyfw.12306.cn/otn/login/checkUser", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return false, err
 	}

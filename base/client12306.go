@@ -1,9 +1,15 @@
 package base
 
 import (
+	"fmt"
 	"log"
+	"traintickets/base/appconfig"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
+)
+
+var (
+	appconf = appconfig.GetAppConfig()
 )
 
 //ClientContext ...
@@ -45,6 +51,7 @@ func (client *client12306) Context() contract.IClientContext {
 
 //Start 开始刷票
 func (client *client12306) Start(query *contract.TicketQuery) {
+
 	username := ""
 	pwd := ""
 
@@ -95,6 +102,7 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 		cf, err := ticketMod.CheckOutOrder(0, ck)
 		if err != nil {
 			log.Println("chekout err :", err.Error())
+			ticketMod.ReStart()
 			continue
 		}
 		if cf {
@@ -109,7 +117,11 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 //New12306Client ...
 func New12306Client(context contract.IClientContext, urlStr string) (contract.IClient12306, error) {
 	clientid := 0
-	resp, err := piaohttputil.GetV(clientid, urlStr, "https://kyfw.12306.cn/otn/", false)
+	referer, err := appconfig.Combine(appconf.MainURL, appconf.Ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mainUrl error:%s", err.Error())
+	}
+	resp, err := piaohttputil.GetV(clientid, urlStr, referer, false)
 	if err != nil {
 		return nil, err
 	}

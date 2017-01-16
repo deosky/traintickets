@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"traintickets/base/appconfig"
 	"traintickets/base/piaohttputil"
 )
 
@@ -39,10 +40,15 @@ type checkRandCodeAnsynData struct {
 	Msg    string `json:"msg"`
 }
 
+var (
+	appconf = appconfig.GetAppConfig()
+)
+
 //CaptureVCode ...touclick-randCode
 func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*string, error) {
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "passcodeNew/getPassCodeNew")
 	randNum := randGen.Float64()
-	vcodeURL := fmt.Sprintf("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=%s&rand=%s&%s", module, rand, strconv.FormatFloat(randNum, 'f', 17, 64))
+	vcodeURL := urlStr + fmt.Sprintf("?module=%s&rand=%s&%s", module, rand, strconv.FormatFloat(randNum, 'f', 17, 64))
 	fmt.Println("randnum:=", randNum)
 	fmt.Println("vcodeUrl:=", vcodeURL)
 	rep, err := piaohttputil.Get(clientID, vcodeURL)
@@ -56,6 +62,7 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 	data := make([]byte, 1024)
 	for {
 		n, err := rep.Body.Read(data)
+		buf.Write(data[:n])
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -63,7 +70,6 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 				return nil, err
 			}
 		}
-		buf.Write(data[:n])
 	}
 	file, err := os.Create(strconv.FormatFloat(randNum, 'f', 17, 64) + "vcode.png")
 	if err != nil {
@@ -86,12 +92,14 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 func (vcode *VCodeModule) CheckVCode(clientID int, code string) (bool, error) {
 	//randCode:110,49,183,45,239,50
 	//rand:sjrand
+
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "passcodeNew/checkRandCodeAnsyn")
 	fmt.Println("正在校验验证码")
 	data := make(url.Values, 2)
 	data.Add("randCode", code)
 	data.Add("rand", "sjrand")
 
-	resp, err := piaohttputil.Post(clientID, "https://kyfw.12306.cn/otn/passcodeNew/checkRandCodeAnsyn", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
+	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
 	if err != nil {
 		return false, err
 	}

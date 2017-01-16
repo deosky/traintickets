@@ -3,6 +3,7 @@ package ticketmod
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -11,11 +12,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"traintickets/base/appconfig"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
 )
-
-import "errors"
 
 const (
 	//STOP 停止状态
@@ -44,6 +44,8 @@ var (
 	reg2 = regexp.MustCompile(pat2)
 	pat3 = "'"
 	reg3 = regexp.MustCompile(pat3)
+
+	appconf = appconfig.GetAppConfig()
 )
 
 //ReStart 重新启动所有的查票线程
@@ -290,12 +292,12 @@ func resolveQueryAResult(data *bytes.Buffer) (*ticketResult, error) {
 func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 
 	//https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=2017-01-26&leftTicketDTO.from_station=SHH&leftTicketDTO.to_station=BJP&purpose_codes=ADULT
-
-	formatStr := "https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
+	logurlPrefix, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/log")
+	formatStr := logurlPrefix + "?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
 	urlStr := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
-
-	resp, err := piaohttputil.GetV(clientID, urlStr, "https://kyfw.12306.cn/otn/leftTicket/init", true)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/init")
+	resp, err := piaohttputil.GetV(clientID, urlStr, referer, true)
 	if err != nil {
 		return false, err
 	}
@@ -316,11 +318,12 @@ func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 }
 
 func queryTicket(clientID int, query *contract.TicketQuery) (*bytes.Buffer, error) {
-	formatStr := "https://kyfw.12306.cn/otn/leftTicket/queryA?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
+	urlPrefix, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/queryA")
+	formatStr := "?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
-	urlStr := fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
-
-	resp, err := piaohttputil.GetV(clientID, urlStr, "https://kyfw.12306.cn/otn/leftTicket/init", true)
+	urlStr := urlPrefix + fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/init")
+	resp, err := piaohttputil.GetV(clientID, urlStr, referer, true)
 	if err != nil {
 		return nil, err
 	}
@@ -490,8 +493,9 @@ func submitOrderRequest(clientID int, reqInfo *submitOrderReqInfo) error {
 	vs.Add("query_to_station_name", reqInfo.QueryToStationName)
 	vsencode := vs.Encode()
 	vsencode += "&undefined"
-	urlStr := "https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest"
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vsencode))
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/submitOrderRequest")
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/init")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vsencode))
 	defer resp.Body.Close()
 
 	if err != nil {
@@ -517,11 +521,11 @@ func submitOrderRequest(clientID int, reqInfo *submitOrderReqInfo) error {
 
 //confirmPassengerInitDc globalRepeatSubmitToken
 func confirmPassengerInitDc(clientID int) (*confirmPassengerInitDcResp, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/initDc"
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
 	vs := make(url.Values, 1)
 	vs.Add("_json_att", "")
-
-	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded", "https://kyfw.12306.cn/otn/leftTicket/init", false, strings.NewReader(vs.Encode()))
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/init")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded", referer, false, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -569,12 +573,13 @@ func ownpwud(clientID int) {
 
 //getPassengerDTOs ..._json_att=&REPEAT_SUBMIT_TOKEN=02b853c516d144427f39c393fd0fe159
 func getPassengerDTOs(clientID int, reqInfo *getPassengerDTOsReqInfo) (*getPassengerDTOResp, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs"
+
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/getPassengerDTOs") //"https://kyfw.12306.cn/otn/confirmPassenger/getPassengerDTOs"
 	vs := make(url.Values, 2)
 	vs.Add("_json_att", reqInfo.JSONAtt)
 	vs.Add("REPEAT_SUBMIT_TOKEN", reqInfo.RepeatSubmitToken)
-
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +603,8 @@ func getPassengerDTOs(clientID int, reqInfo *getPassengerDTOsReqInfo) (*getPasse
 
 //checkOrderInfo ...
 func checkOrderInfo(clientID int, reqInfo *checkOrderReqInfo) (*checkOrderResp, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo"
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/checkOrderInfo") //"https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo"
+
 	vs := make(url.Values, 8)
 
 	vs.Add("cancel_flag", reqInfo.CancelFlag)
@@ -609,7 +615,8 @@ func checkOrderInfo(clientID int, reqInfo *checkOrderReqInfo) (*checkOrderResp, 
 	vs.Add("randCode", reqInfo.RandCode)
 	vs.Add("_json_att", reqInfo.JSONAtt)
 	vs.Add("REPEAT_SUBMIT_TOKEN", reqInfo.RepeatSubmitToken)
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +634,8 @@ func checkOrderInfo(clientID int, reqInfo *checkOrderReqInfo) (*checkOrderResp, 
 }
 
 func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount"
+
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/getQueueCount") //urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount"
 	vs := make(url.Values, 11)
 	vs.Add("train_date", reqInfo.TrainDate)
 	vs.Add("train_no", reqInfo.TrainNo)
@@ -640,8 +648,9 @@ func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp,
 	vs.Add("train_location", reqInfo.TrainLocation)
 	vs.Add("_json_att", reqInfo.JSONAtt)
 	vs.Add("REPEAT_SUBMIT_TOKEN", reqInfo.RepeatSubmitToken)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
 
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -658,7 +667,9 @@ func getQueueCount(clientID int, reqInfo *getQueueCountReq) (*getQueueCountResp,
 }
 
 func confirmSingleForQueue(clientID int, reqInfo *confirmSingleForQueueReq) (*confirmSingleForQueueResp, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue"
+
+	//urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue"
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/confirmSingleForQueue")
 	vs := make(url.Values, 13)
 	vs.Add("passengerTicketStr", reqInfo.PassengerTicketStr)
 	vs.Add("oldPassengerStr", reqInfo.OldPassengerStr)
@@ -673,8 +684,9 @@ func confirmSingleForQueue(clientID int, reqInfo *confirmSingleForQueueReq) (*co
 	vs.Add("dwAll", reqInfo.DwAll)
 	vs.Add("_json_att", reqInfo.JSONAtt)
 	vs.Add("REPEAT_SUBMIT_TOKEN", reqInfo.RepeatSubmitToken)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
 
-	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", "https://kyfw.12306.cn/otn/confirmPassenger/initDc", true, strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -695,10 +707,11 @@ func confirmSingleForQueue(clientID int, reqInfo *confirmSingleForQueueReq) (*co
 
 //queryOrderWaitTime ...
 func queryOrderWaitTime(clientID int, reqInfo queryOrderWaitTimeReq) (*queryOrderWaitTimeData, error) {
-	urlStr := "https://kyfw.12306.cn/otn/confirmPassenger/queryOrderWaitTime?"
+	urlStr, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/queryOrderWaitTime") //"https://kyfw.12306.cn/otn/confirmPassenger/queryOrderWaitTime?"
 	urlStr = fmt.Sprintf("%s?random=%s&tourFlag=%s&_json_att=%s&REPEAT_SUBMIT_TOKEN=%s", urlStr, reqInfo.Random, reqInfo.TourFlag, reqInfo.JSONAtt, reqInfo.RepeatSubmitToken)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "confirmPassenger/initDc")
 
-	resp, err := piaohttputil.Get(clientID, urlStr)
+	resp, err := piaohttputil.GetV(clientID, urlStr, referer, true)
 	if err != nil {
 		return nil, err
 	}

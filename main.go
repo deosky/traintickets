@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"time"
 	"traintickets/base"
+	"traintickets/base/appconfig"
 	"traintickets/base/contract"
 	"traintickets/module/loginmod"
 	"traintickets/module/ticketmod"
 	"traintickets/module/vcodemod"
+)
+
+var (
+	appconf = appconfig.GetAppConfig()
 )
 
 func main() {
@@ -19,7 +24,7 @@ func main() {
 
 	mainContext := base.NewClientContext(loginModule, vcodeModule, ticketModule)
 
-	client, err := base.New12306Client(mainContext, "https://kyfw.12306.cn/otn/login/init")
+	client, err := base.New12306Client(mainContext, appconf.InitURL)
 	if err != nil {
 		fmt.Println(err)
 	} else {
