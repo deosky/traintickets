@@ -55,7 +55,7 @@ func (client *client12306) Context() contract.IClientContext {
 func (client *client12306) Start(account *contract.AccountInfo, query *contract.TicketQuery) error {
 
 	if len(account.IDCards) < 1 {
-		return errors.New("未制定购票人身份证号码")
+		return errors.New("未指定购票人身份证号码")
 	}
 
 	lgm := client.Context().LoginModule()
