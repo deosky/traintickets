@@ -1,8 +1,10 @@
 package base
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"time"
 	"traintickets/base/appconfig"
 	"traintickets/base/contract"
 	"traintickets/base/piaohttputil"
@@ -50,23 +52,37 @@ func (client *client12306) Context() contract.IClientContext {
 }
 
 //Start 开始刷票
-func (client *client12306) Start(query *contract.TicketQuery) {
+func (client *client12306) Start(account *contract.AccountInfo, query *contract.TicketQuery) error {
 
-	username := ""
-	pwd := ""
-
-	fmt.Println("12306用户名:")
-	fmt.Scanf("%s\n", &username)
-	fmt.Println("12306密码:")
+	if len(account.IDCards) < 1 {
+		return errors.New("未制定购票人身份证号码")
+	}
 
 	lgm := client.Context().LoginModule()
 	vcp := client.Context().VCodeModule()
-	_, err := lgm.Login(client.id, username, pwd, vcp)
-	if err != nil {
-		log.Println("登陆失败:", err.Error())
-		return
+	index := 0
+	loginflag := false
+	for ; index < 3; index++ {
+		f, err := lgm.Login(client.id, account.UserName, account.Password, vcp)
+		loginflag = f
+		if err != nil {
+			log.Println("登陆失败:", err.Error())
+			println("5秒后自动重新登陆,请等待")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		break
 	}
+	if index > 3 && !loginflag {
+		return errors.New("登陆失败，请检查异常信息")
+	}
+
 	log.Println("登陆成功")
+
+	go func() {
+		lgm.Refresh(client.id)
+		time.Sleep(10 * time.Minute)
+	}()
 
 	log.Println("开始自动刷票中")
 	ticketMod := client.Context().TicketModule()
@@ -78,9 +94,9 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 		ck := &contract.CheckOutOrderContext{
 			VCodeMod:          client.Context().VCodeModule(),
 			LoginMod:          client.Context().LoginModule(),
-			UserName:          username,
-			Pwd:               pwd,
-			PassengerIDCardNo: []string{""},
+			UserName:          account.UserName,
+			Pwd:               account.Password,
+			PassengerIDCardNo: account.IDCards,
 			SecretStr:         t.SecretStr,
 			Train: contract.TrainInfo{
 				StationTrainCode:     t.StationTrainCode,
@@ -106,7 +122,7 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 		log.Println("chekout err")
 	}
 	log.Println("checkout success.")
-
+	return nil
 }
 
 //New12306Client ...

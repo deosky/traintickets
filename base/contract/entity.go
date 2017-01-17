@@ -41,6 +41,13 @@ const (
 	TICKETTYPECANJUN int = 4
 )
 
+//AccountInfo ...
+type AccountInfo struct {
+	UserName string
+	Password string
+	IDCards  []string
+}
+
 //TicketQuery ...
 type TicketQuery struct {
 	TrainDate        time.Time       //购票日期

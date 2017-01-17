@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -58,18 +57,18 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	}
 	fmt.Println("请输入验证码:")
 	var vcode string
-	conn, err := net.Dial("tcp", "127.0.0.1:8686")
-	if err != nil {
-		return false, err
-	}
-	v, err := ioutil.ReadAll(conn)
-	conn.Close()
-	if err != nil {
-		return false, err
-	}
-	vcode = string(v)
+	// conn, err := net.Dial("tcp", "127.0.0.1:8686")
+	// if err != nil {
+	// 	return false, err
+	// }
+	// v, err := ioutil.ReadAll(conn)
+	// conn.Close()
+	// if err != nil {
+	// 	return false, err
+	// }
+	// vcode = string(v)
 
-	// fmt.Scanf("%s", &vcode)
+	fmt.Scanf("%s\n", &vcode)
 	fmt.Printf("输入的验证码为%s\n", vcode)
 	_, err = vcp.CheckVCode(clientID, vcode)
 	if err != nil {
@@ -83,7 +82,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	vs.Add("userDTO.password", pwd)
 	vs.Add("randCode", vcode)
 
-	fmt.Printf("正在登陆 %s , %s , vcode:%s\n", username, pwd, vcode)
+	fmt.Printf("正在登陆 %s , %s , vcode:%s\n", username, "******", vcode)
 
 	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/init")
 	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(vs.Encode()))

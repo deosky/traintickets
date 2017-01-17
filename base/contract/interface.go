@@ -3,7 +3,7 @@ package contract
 //IClient12306 ...
 type IClient12306 interface {
 	Context() IClientContext
-	Start(query *TicketQuery)
+	Start(account *AccountInfo, query *TicketQuery) error
 }
 
 //IClientContext ...
