@@ -93,9 +93,9 @@ func getDo(clientID int, req *http.Request) (*http.Response, error) {
 }
 
 //Post ...
-func Post(clientID int, url string, bodyType string, body io.Reader) (*http.Response, error) {
+func Post(clientID int, urlStr string, bodyType string, body io.Reader) (*http.Response, error) {
 
-	req, err := http.NewRequest("POST", url, body)
+	req, err := http.NewRequest("POST", urlStr, body)
 	if err != nil {
 		return nil, err
 	}
@@ -103,9 +103,9 @@ func Post(clientID int, url string, bodyType string, body io.Reader) (*http.Resp
 }
 
 //PostV ...
-func PostV(clientID int, url, bodyType, referer string, isXhr bool, body io.Reader) (*http.Response, error) {
-
-	req, err := http.NewRequest("POST", url, body)
+func PostV(clientID int, urlStr, bodyType, referer string, isXhr bool, body io.Reader) (*http.Response, error) {
+	log.Println("req postv:", urlStr)
+	req, err := http.NewRequest("POST", urlStr, body)
 	if err != nil {
 		return nil, err
 	}

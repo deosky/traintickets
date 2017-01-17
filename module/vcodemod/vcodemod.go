@@ -1,14 +1,13 @@
 package vcodemod
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math/rand"
 	"net/url"
 	"os"
@@ -57,31 +56,21 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 		return nil, err
 	}
 	defer rep.Body.Close()
-
-	var buf bytes.Buffer
-	data := make([]byte, 1024)
-	for {
-		n, err := rep.Body.Read(data)
-		buf.Write(data[:n])
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return nil, err
-			}
-		}
+	data, err := ioutil.ReadAll(rep.Body)
+	if err != nil {
+		return nil, err
 	}
 	file, err := os.Create(strconv.FormatFloat(randNum, 'f', 17, 64) + "vcode.png")
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	file.Write(buf.Bytes())
-	base64Str := base64.StdEncoding.EncodeToString(buf.Bytes())
+	file.Write(data)
+	base64Str := base64.StdEncoding.EncodeToString(data)
 	//fmt.Println("data base64 str:=", base64Str)
 
 	md5n := md5.New()
-	md5n.Write(buf.Bytes())
+	md5n.Write(data)
 	cipherStr := md5n.Sum(nil)
 	fmt.Println("md5 bytes:=", cipherStr, "hex string:=", hex.EncodeToString(cipherStr))
 

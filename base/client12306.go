@@ -55,6 +55,10 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 	username := ""
 	pwd := ""
 
+	fmt.Println("12306用户名:")
+	fmt.Scanf("%s\n", &username)
+	fmt.Println("12306密码:")
+
 	lgm := client.Context().LoginModule()
 	vcp := client.Context().VCodeModule()
 	_, err := lgm.Login(client.id, username, pwd, vcp)
@@ -66,15 +70,6 @@ func (client *client12306) Start(query *contract.TicketQuery) {
 
 	log.Println("开始自动刷票中")
 	ticketMod := client.Context().TicketModule()
-	//t, _ := time.Parse("2006-01-02", "2017-02-07")
-	// query := &contract.TicketQuery{
-	// 	TrainDate:    t,
-	// 	FromStation:  "FYH",
-	// 	ToStation:    "SHH",
-	// 	PurposeCodes: "ADULT",
-	// 	IntervalTime: 3 * time.Second,
-	// 	SeatTypes:    []byte{contract.YW},
-	// }
 	log.Println("查票参数:", query)
 	res := ticketMod.QueryTicket(query)
 

@@ -17,6 +17,7 @@ type IClientContext interface {
 type ILogin interface {
 	Login(clientID int, username, pwd string, vcp IVCode) (bool, error)
 	CheckUser(clientID int) (bool, error)
+	Refresh(clientID int) (bool, error)
 }
 
 //IVCode ...
