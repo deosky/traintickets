@@ -7,6 +7,8 @@ type RespHead struct {
 	Httpstatus             int         `json:"httpstatus"`
 	Messages               []string    `json:"messages"`
 	ValidateMessages       interface{} `json:"validateMessages"`
+	CURL                   string      `json:"c_url"`
+	CNAME                  string      `json:"c_name"`
 }
 
 //ticketResult ...

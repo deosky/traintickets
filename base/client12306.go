@@ -53,7 +53,7 @@ func (client *client12306) Context() contract.IClientContext {
 
 //Start 开始刷票
 func (client *client12306) Start(account *contract.AccountInfo, query *contract.TicketQuery) error {
-
+	fmt.Printf("seattype %c\n", query.SeatTypes[0])
 	if len(account.IDCards) < 1 {
 		return errors.New("未指定购票人身份证号码")
 	}

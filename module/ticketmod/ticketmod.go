@@ -45,7 +45,8 @@ var (
 	pat3 = "'"
 	reg3 = regexp.MustCompile(pat3)
 
-	appconf = appconfig.GetAppConfig()
+	appconf        = appconfig.GetAppConfig()
+	cLeftTicketURL = "leftTicket/queryA"
 )
 
 //ReStart 重新启动所有的查票线程
@@ -150,7 +151,7 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 	if !r {
 		return false, nil, errors.New("ticketLog false")
 	}
-	res, err := queryTicket(clientID, query)
+	res, err := queryTicket(clientID, query, cLeftTicketURL)
 	if err != nil {
 		return false, nil, err
 	}
@@ -159,7 +160,12 @@ func queryATicket(clientID int, query *contract.TicketQuery) (bool, *contract.Ti
 	if err != nil {
 		return false, nil, err
 	}
-
+	if !result.Status {
+		if result.CNAME == "CLeftTicketUrl" {
+			cLeftTicketURL = result.CURL
+		}
+		return false, nil, fmt.Errorf("查票失败:%v", result)
+	}
 	//判断是否存在指定的票
 	for _, p := range result.Data {
 		if p.Dto.CanWebBuy == "IS_TIME_NOT_BUY" {
@@ -317,8 +323,8 @@ func ticketLog(clientID int, query *contract.TicketQuery) (bool, error) {
 	return result.Status, nil
 }
 
-func queryTicket(clientID int, query *contract.TicketQuery) (*bytes.Buffer, error) {
-	urlPrefix, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "leftTicket/queryA")
+func queryTicket(clientID int, query *contract.TicketQuery, leftTicketURL string) (*bytes.Buffer, error) {
+	urlPrefix, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, leftTicketURL)
 	formatStr := "?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s"
 	date := fmt.Sprintf("%d-%02d-%02d", query.TrainDate.Year(), query.TrainDate.Month(), query.TrainDate.Day())
 	urlStr := urlPrefix + fmt.Sprintf(formatStr, date, query.FromStation, query.ToStation, query.PurposeCodes)
