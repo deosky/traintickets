@@ -73,15 +73,25 @@ func (client *client12306) Start(account *contract.AccountInfo, query *contract.
 		}
 		break
 	}
-	if index > 3 && !loginflag {
+	if index >= 3 && !loginflag {
 		return errors.New("登陆失败，请检查异常信息")
 	}
 
 	log.Println("登陆成功")
 
 	go func() {
-		lgm.Refresh(client.id)
-		time.Sleep(10 * time.Minute)
+		for {
+			time.Sleep(10 * time.Minute)
+			_, err := lgm.Refresh(client.id)
+			if err != nil {
+				println("正在重新登录,请等待")
+				_, err := lgm.Login(client.id, account.UserName, account.Password, vcp)
+				if err != nil {
+					log.Println("登陆失败:", err.Error())
+				}
+			}
+
+		}
 	}()
 
 	log.Println("开始自动刷票中")

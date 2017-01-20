@@ -12,7 +12,7 @@ import (
 
 var (
 	jarPool = &cJar{jars: make(map[int]*cookiejar.Jar)}
-	// u, _    = url.Parse("http://10.20.110.60:8888")
+	// u, _    = url.Parse("http://10.20.111.98:8888")
 	// tr      = &http.Transport{
 	// 	Proxy: http.ProxyURL(u),
 	// 	TLSClientConfig: &tls.Config{

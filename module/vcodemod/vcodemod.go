@@ -50,7 +50,8 @@ func (vcode *VCodeModule) CaptureVCode(clientID int, module, rand string) (*stri
 	vcodeURL := urlStr + fmt.Sprintf("?module=%s&rand=%s&%s", module, rand, strconv.FormatFloat(randNum, 'f', 17, 64))
 	fmt.Println("randnum:=", randNum)
 	fmt.Println("vcodeUrl:=", vcodeURL)
-	rep, err := piaohttputil.Get(clientID, vcodeURL)
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/init")
+	rep, err := piaohttputil.GetV(clientID, vcodeURL, referer, false)
 	if err != nil {
 		fmt.Println("CaptureVCode:=", err)
 		return nil, err
@@ -87,8 +88,8 @@ func (vcode *VCodeModule) CheckVCode(clientID int, code string) (bool, error) {
 	data := make(url.Values, 2)
 	data.Add("randCode", code)
 	data.Add("rand", "sjrand")
-
-	resp, err := piaohttputil.Post(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(data.Encode()))
+	referer, _ := appconfig.Combine(appconf.MainURL, appconf.Ctx, "login/init")
+	resp, err := piaohttputil.PostV(clientID, urlStr, "application/x-www-form-urlencoded; charset=UTF-8", referer, true, strings.NewReader(data.Encode()))
 	if err != nil {
 		return false, err
 	}
@@ -114,5 +115,31 @@ func (vcode *VCodeModule) CheckVCode(clientID int, code string) (bool, error) {
 //ResolveVCodeImg ...
 func (vcode *VCodeModule) ResolveVCodeImg(clientID int, base64Img *string) (string, error) {
 
-	return "", nil
+	vs := make(url.Values, 1)
+	vs.Add("data", *base64Img)
+
+	resp, err := piaohttputil.Post(clientID, "http://localhost:8988/getsign", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	resdata, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	rt := &CheckResult{}
+	err = json.Unmarshal(resdata, rt)
+	if err != nil {
+		return "", err
+	}
+	if rt.Status == 1 {
+		return rt.Data, nil
+	}
+	return "", errors.New(rt.Data)
+}
+
+//CheckResult ...
+type CheckResult struct {
+	Status int
+	Data   string
 }

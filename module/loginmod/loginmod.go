@@ -51,7 +51,7 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	}
 	//time.Sleep(2 * time.Second)
 	//捕获验证码
-	_, err = vcp.CaptureVCode(clientID, "login", "sjrand")
+	base64Img, err := vcp.CaptureVCode(clientID, "login", "sjrand")
 	if err != nil {
 		return false, err
 	}
@@ -68,8 +68,15 @@ func (lm *LoginModule) Login(clientID int, username, pwd string, vcp contract.IV
 	// }
 	// vcode = string(v)
 
-	fmt.Scanf("%s\n", &vcode)
-	fmt.Printf("输入的验证码为%s\n", vcode)
+	//fmt.Scanf("%s\n", &vcode)
+	//fmt.Printf("输入的验证码为%s\n", vcode)
+	vcode, err = vcp.ResolveVCodeImg(clientID, base64Img)
+	if err != nil {
+		return false, err
+	}
+
+	time.Sleep(5 * time.Second)
+
 	_, err = vcp.CheckVCode(clientID, vcode)
 	if err != nil {
 		return false, err
