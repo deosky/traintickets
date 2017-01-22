@@ -118,7 +118,7 @@ func (vcode *VCodeModule) ResolveVCodeImg(clientID int, base64Img *string) (stri
 	vs := make(url.Values, 1)
 	vs.Add("data", *base64Img)
 
-	resp, err := piaohttputil.Post(clientID, "http://localhost:8988/getsign", "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
+	resp, err := piaohttputil.Post(clientID, appconf.AutoVcodeURL, "application/x-www-form-urlencoded; charset=UTF-8", strings.NewReader(vs.Encode()))
 	if err != nil {
 		return "", err
 	}

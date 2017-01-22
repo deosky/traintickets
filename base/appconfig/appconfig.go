@@ -12,10 +12,11 @@ import (
 
 //AppConfig ...
 type AppConfig struct {
-	CdnIPAddr []string `json:"cdnIpAddr"`
-	InitURL   string   `json:"initUrl"`
-	MainURL   string   `json:"mainUrl"`
-	Ctx       string   `json:"ctx"`
+	CdnIPAddr    []string `json:"cdnIpAddr"`
+	InitURL      string   `json:"initUrl"`
+	MainURL      string   `json:"mainUrl"`
+	Ctx          string   `json:"ctx"`
+	AutoVcodeURL string   `json:"autoVcodeUrl"`
 }
 
 var (

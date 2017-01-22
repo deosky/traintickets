@@ -6,5 +6,6 @@
     ],
     "initUrl":"https://kyfw.12306.cn/otn/login/init",
     "mainUrl":"https://kyfw.12306.cn/",
-    "ctx":"otn"
+    "ctx":"otn",
+    "autoVcodeUrl":"http://localhost:8988/getsign"
 }
