@@ -47,11 +47,22 @@ func main() {
 	println("******")
 
 	trainDate := ""
+	var t time.Time
 	fmt.Println("输入乘车日期(2006-01-02):")
-	fmt.Scanf("%s\n", &trainDate)
-	t, _ := time.Parse("2006-01-02", trainDate)
-
-	fmt.Println("请输入身份证号码:")
+	for {
+		fmt.Scanf("%s\n", &trainDate)
+		t, err = time.Parse("2006-01-02", trainDate)
+		if err != nil {
+			fmt.Println("无效时间请重新输入")
+			continue
+		}
+		if t.Before(time.Now()) {
+			fmt.Println("输入的时间不能小于当前日期")
+			continue
+		}
+		break
+	}
+	fmt.Println("请输入购票人身份证号码:")
 	idcard := ""
 	fmt.Scanf("%s\n", &idcard)
 
